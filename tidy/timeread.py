@@ -8,7 +8,9 @@ Jeremy Schaub
 $ ./timeread.py [time_output_file]
 '''
 
+import os
 import sys
+import subprocess
 import measurement
 
 class TimeMeasurement(measurement.Measurement):
@@ -25,7 +27,7 @@ class TimeMeasurement(measurement.Measurement):
         self.cpu_pct = ''
         self._expected_length = 5  # Change this when adding new fields
 
-    def parse(self, time_fn):
+    def parse(self, time_fn, run_id):
         '''
         This parses the output of "/usr/bin/time --verbose"
         Parsing these fields:  exit_status, user_time_sec, elapsed_time_sec,
@@ -53,6 +55,10 @@ class TimeMeasurement(measurement.Measurement):
                           0]) * 3600 + int(val.split(':')[1]) * 60 +
                           float(val.split(':')[2].strip()))
             self.elapsed_time_sec = val
+            pmh = os.environ.get('PMH')
+            if subprocess.call("ls " + pmh + "/workload/spark/event_logs/app-*." + run_id + " > /dev/null 2>&1", shell=True) == 0:
+                self.elapsed_time_sec = subprocess.check_output("PMH=" + pmh + " " + pmh + "/workload/spark/scripts/analyze_spark_event_log.sh " + run_id + " | tr -d '\n'", shell=True)
+
             self.cpu_pct = blob.split('Percent of CPU this job got: ')[
                 1].split('\n')[0].strip('%')
         except Exception as err:
@@ -65,7 +71,7 @@ class TimeMeasurement(measurement.Measurement):
 def main(time_fn):
     # Wrapper to write csv to stdout
     m = TimeMeasurement()
-    m.parse(time_fn)
+    m.parse(time_fn, "NA")
     sys.stdout.write('%s\n%s\n' % (m.headercsv(), m.rowcsv()))
 
 

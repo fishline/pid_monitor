@@ -15,4 +15,4 @@ do
 done
 
 echo Writing to $OUT_FN
-dd if=/dev/zero of=$OUT_FN bs=$BS count=4096 oflag=direct
+dd if=/dev/zero of=$OUT_FN bs=$BS count=4 oflag=direct
