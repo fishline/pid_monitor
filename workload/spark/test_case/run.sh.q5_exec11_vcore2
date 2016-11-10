@@ -1,0 +1,3 @@
+#!/bin/bash
+
+/home/felix/spark-1.6.1/bin/spark-sql --master spark://192.168.0.3:7077 -f /home/felix/q5.sql --executor-cores 2 > /tmp/log 2>&1
