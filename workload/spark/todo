@@ -1,7 +1,0 @@
-Scripts:
-#1. daemon control (start/stop)
-#2. OS page cache cleanup
-3. spark config update
-4. collect spark event log
-5. analyze spark event log to get result/statistics
-6. summarize result in html

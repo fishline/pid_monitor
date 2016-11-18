@@ -1,0 +1,4 @@
+1. This tool is running on MASTER
+2. The list of slaves are configured in MASTER's <SPARK_HOME>/conf/slaves file
+3. Using root account to do the test on all nodes, since we are going to run some system cache/swap related tunings, and also we will run lpcpu to collect statistics
+4. The ssh access between MASTER and SLAVE nodes has been set to password-less

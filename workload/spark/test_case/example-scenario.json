@@ -1,0 +1,61 @@
+[
+    {
+        "ACTION" : "CLEAR_SWAPPINESS"
+    },
+    {
+        "ACTION" : "HDFS",
+        "PARAM" : "STOP"
+    },
+    {
+        "ACTION" : "YARN",
+        "PARAM" : "STOP"
+    },
+    {
+        "ACTION" : "DROP_CACHE"
+    },
+    {
+        "ACTION" : "HDFS",
+        "PARAM" : "START"
+    },
+    {
+        "ACTION" : "YARN",
+        "PARAM" : "START"
+    },
+    {
+        "ACTION" : "WAIT",
+        "PARAM" : 30
+    },
+    {
+        "TAG" : "q1_exec1_vcore2",
+        "CMD" : {
+            "TARGET" : "MASTER",
+            "COMMAND" : "<SPARK_HOME>/bin/spark_submit",
+            "PARAM" : {
+                "--num-executors" : "1",
+                "--executor-cores" : "2",
+                "--executor-memory" : "2g",
+                "--conf" : [
+                    "spark.executor.extraJavaOptions=\"-XX:ParallelGCThreads=4 -XX:+AlwaysTenure\""
+                ]
+            }
+        }
+    },
+    {
+        "ACTION" : "DROP_CACHE"
+    },
+    {
+        "TAG" : "q1_exec2_vcore1",
+        "CMD" : {
+            "TARGET" : "MASTER",
+            "COMMAND" : "<SPARK_HOME>/bin/spark_submit",
+            "PARAM" : {
+                "--num-executors" : "2",
+                "--executor-cores" : "1",
+                "--executor-memory" : "2g",
+                "--conf" : [
+                    "spark.executor.extraJavaOptions=\"-XX:ParallelGCThreads=2 -XX:+AlwaysTenure\""
+                ]
+            }
+        }
+    }
+]
