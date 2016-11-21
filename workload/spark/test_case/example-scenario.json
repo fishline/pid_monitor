@@ -28,17 +28,23 @@
     {
         "TAG" : "q1_exec1_vcore2",
         "CMD" : {
-            "TARGET" : "MASTER",
-            "COMMAND" : "<SPARK_HOME>/bin/spark_submit",
-            "PARAM" : {
-                "--num-executors" : "1",
-                "--executor-cores" : "2",
-                "--executor-memory" : "2g",
-                "--conf" : [
-                    "spark.executor.extraJavaOptions=\"-XX:ParallelGCThreads=4 -XX:+AlwaysTenure\""
-                ]
-            }
-        }
+            "COMMAND" : "<SPARK_HOME>/bin/run-example",
+            "PARAM" : [
+                "--master yarn",
+                "--num-executors 1",
+                "--executor-cores 2",
+                "--executor-memory 1g",
+                {
+                    "--conf" : [
+                        "spark.executor.extraJavaOptions=\\\"-XX:ParallelGCThreads=4 -XX:+AlwaysTenure\\\""
+                    ]
+                },
+                "org.apache.spark.examples.mllib.MovieLensALS",
+                "--rank 5 --numIterations 5 --lambda 1.0 --kryo file://<SPARK_HOME>/sample_movielens_data.txt"
+            ]
+        },
+        "REPEAT" : 1,
+        "DROP_CACHE_BETWEEN_REPEAT" : "FALSE"
     },
     {
         "ACTION" : "DROP_CACHE"
@@ -46,16 +52,22 @@
     {
         "TAG" : "q1_exec2_vcore1",
         "CMD" : {
-            "TARGET" : "MASTER",
-            "COMMAND" : "<SPARK_HOME>/bin/spark_submit",
-            "PARAM" : {
-                "--num-executors" : "2",
-                "--executor-cores" : "1",
-                "--executor-memory" : "2g",
-                "--conf" : [
-                    "spark.executor.extraJavaOptions=\"-XX:ParallelGCThreads=2 -XX:+AlwaysTenure\""
-                ]
-            }
-        }
+            "COMMAND" : "<SPARK_HOME>/bin/run-example",
+            "PARAM" : [
+                "--master yarn",
+                "--num-executors 2",
+                "--executor-cores 1",
+                "--executor-memory 1g",
+                {
+                    "--conf" : [
+                        "spark.executor.extraJavaOptions=\\\"-XX:ParallelGCThreads=2 -XX:+AlwaysTenure\\\""
+                    ]
+                },
+                "org.apache.spark.examples.mllib.MovieLensALS",
+                "--rank 5 --numIterations 5 --lambda 1.0 --kryo file://<SPARK_HOME>/sample_movielens_data.txt"
+            ]
+        },
+        "REPEAT" : 2,
+        "DROP_CACHE_BETWEEN_REPEAT" : "TRUE"
     }
 ]
