@@ -1,4 +1,4 @@
 *pyc
-workload/spark/event_logs/app-*
 pid_webserver.sh
 tmp.json
+workload/spark/test_case/**
