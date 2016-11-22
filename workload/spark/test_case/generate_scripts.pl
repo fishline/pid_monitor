@@ -392,6 +392,8 @@ if ($smt_reset == 1) {
 # ACTION reset to SMT4 on all slave nodes
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=4"
 
+\$PMH/create_summary_table.py \$RUNDIR/html/config.json > \$RUNDIR/html/summary.html
+
 EOF
 }
 

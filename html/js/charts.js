@@ -16,7 +16,7 @@
             return {
                 x: line.run_id,
                 //x: line.run_id.split('=')[1].split('.')[0], //threads
-                y: line.elapsed_time_sec
+                y: line.median_sec
             };
         },
         parse_dstat_line = function(line, linenum, factor) {

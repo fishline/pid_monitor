@@ -13,7 +13,7 @@ import sys
 import os
 import json
 import tidy.timeread
-
+import re
 
 def create_table(config_fn):
     '''
@@ -51,10 +51,17 @@ def create_table(config_fn):
     ids = config['run_ids']
     html_rows = []
     csv_rows = []
-    fields = ['run_id', 'exit_status', 'stdout', 'stderr', 'time', 'elapsed_time_sec']
-    csv_fields = ['run_id', 'exit_status', 'elapsed_time_sec']
+    fields = ['run_id', 'count', 'min_sec', 'median_sec', 'max_sec']
+    csv_fields = ['run_id', 'count', 'median_sec']
+    run_ids = dict()
     for run_id in ids:
-        meas = time_measurement(run_id, config=config)
+        m = re.search("^(.*)-ITER([0-9]*)", run_id)
+        if m.groups(0)[0] in run_ids:
+            run_ids[m.groups(0)[0]] += 1
+        else:
+            run_ids[m.groups(0)[0]] = 1
+    for run_id in run_ids.keys():
+        meas = time_measurement(run_id, run_ids[run_id], config=config)
         html_rows.append(meas.rowhtml(fields=fields))
         csv_rows.append(meas.rowcsv(fields=csv_fields))
     table = html_table(fields, html_rows)
@@ -82,7 +89,7 @@ def csv_table(header, rows):
     return table
 
 
-def time_measurement(run_id, config=None):
+def time_measurement(run_id, run_count, config=None):
     '''
     Create a measurement instance that summarizes the run
     Add fields that link to the time, stdout and stderr files
@@ -90,22 +97,22 @@ def time_measurement(run_id, config=None):
     data_dir = config['data_dir']
     time_fn = os.path.join(data_dir, run_id + config['time_ext'])
     meas = tidy.timeread.TimeMeasurement()
-    meas.parse(time_fn, run_id)
+    meas.parse(time_fn, run_id, run_count)
     meas.addfield('run_id', run_id)
 
-    time_ref = '<a href="%s">time</a>' % time_fn if os.path.isfile(
-        time_fn) else ''
-    meas.addfield('time', time_ref)
+    #time_ref = '<a href="%s">time</a>' % time_fn if os.path.isfile(
+    #    time_fn) else ''
+    #meas.addfield('time', time_ref)
 
-    stdout_fn = os.path.join(data_dir, run_id + config['stdout_ext'])
-    stdout_ref = '<a href="%s">stdout</a>' % stdout_fn if os.path.isfile(
-        stdout_fn) else ''
-    meas.addfield('stdout', stdout_ref)
+    #stdout_fn = os.path.join(data_dir, run_id + config['stdout_ext'])
+    #stdout_ref = '<a href="%s">stdout</a>' % stdout_fn if os.path.isfile(
+    #    stdout_fn) else ''
+    #meas.addfield('stdout', stdout_ref)
 
-    stderr_fn = os.path.join(data_dir, run_id + config['stderr_ext'])
-    stderr_ref = '<a href="%s">stderr</a>' % stderr_fn if os.path.isfile(
-        stderr_fn) else ''
-    meas.addfield('stderr', stderr_ref)
+    #stderr_fn = os.path.join(data_dir, run_id + config['stderr_ext'])
+    #stderr_ref = '<a href="%s">stderr</a>' % stderr_fn if os.path.isfile(
+    #    stderr_fn) else ''
+    #meas.addfield('stderr', stderr_ref)
     return meas
 
 if __name__ == '__main__':
