@@ -23,7 +23,7 @@
     },
     {
         "ACTION" : "WAIT",
-        "PARAM" : 30
+        "PARAM" : 20
     },
     {
         "TAG" : "q1_exec1_vcore2",

@@ -164,6 +164,7 @@ SLAVES="$all_slaves"
 export SLAVES
 
 cd \$PMH
+cp -R html \$RUNDIR/html
 
 EOF
 
@@ -283,6 +284,7 @@ EOF
 EOF
         if ($smt_changed == 1) {
             print $script_fh <<EOF;
+echo "SET SMT to $set_smt on all slaves"
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=$set_smt"
 EOF
         }
@@ -326,7 +328,7 @@ EOF
         }
         if ($repeat == 1) {
             print $script_fh <<EOF;
-export RUN_ID=\"$step->{"TAG"}-0\"
+export RUN_ID=\"$step->{"TAG"}-ITER0\"
 CMD=\"${cmd}\"
 CMD=\"\${CMD} > \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log 2>&1\"
 export WORKLOAD_CMD=\${CMD}
@@ -360,7 +362,7 @@ EOF
 EOF
             }
             print $script_fh <<EOF;
-    export RUN_ID=\"$step->{"TAG"}-\$ITER\"
+    export RUN_ID=\"$step->{"TAG"}-ITER\$ITER\"
     CMD=\"${cmd}\"
     CMD=\"\${CMD} > \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log 2>&1\"
     export WORKLOAD_CMD=\${CMD}
