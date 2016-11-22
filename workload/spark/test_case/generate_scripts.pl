@@ -28,8 +28,8 @@ my $spark_conf = $json->decode($spark_conf_text);
 if (not (exists $spark_conf->{"MASTER"} and exists $spark_conf->{"SPARK_HOME"} and exists $spark_conf->{"HADOOP_HOME"})) {
     die "Please define MASTER/SPARK_HOME/HADOOP_HOME in $case_spark_conf_fn";
 }
-if ($spark_conf->{"SCHEDULER"} ne "YARN") {
-    die "Does not support ".$spark_conf->{"SCHEDULER"}." currently, only YARN mode supported";
+if (($spark_conf->{"SCHEDULER"} ne "YARN") and ($spark_conf->{"SCHEDULER"} ne "STANDALONE")) {
+    die "Does not support ".$spark_conf->{"SCHEDULER"}.", only YARN/STANDALONE supported";
 }
 # Add spark event configuration
 my $spark_event_log_dir = "/tmp/sparkLogs";
@@ -338,10 +338,20 @@ if [ $? -eq 0 ]
 then
     TGT_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk -F"file:" '{print \$2}'`;
     DST_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
+EOF
+            if ($spark_conf->{"SCHEDULER"} eq "YARN") {
+                print $script_fh <<EOF;
     for SLAVE in \$SLAVES
     do
         scp \$SLAVE:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
     done
+EOF
+            } else {
+                print $script_fh <<EOF;
+    cp \$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
+EOF
+            }
+            print $script_fh <<EOF;
 else
     echo "################ Error, did not find event log info ##################"
 fi
@@ -372,10 +382,21 @@ EOF
     then
         TGT_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk -F"file:" '{print \$2}'`;
         DST_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
+EOF
+
+            if ($spark_conf->{"SCHEDULER"} eq "YARN") {
+                print $script_fh <<EOF;
         for SLAVE in \$SLAVES
         do
             scp \$SLAVE:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
         done
+EOF
+            } else {
+                print $script_fh <<EOF;
+        cp \$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
+EOF
+            }
+            print $script_fh <<EOF;
     else
         echo "################ Error, did not find event log info ##################"
     fi
