@@ -31,6 +31,23 @@ if (not (exists $spark_conf->{"MASTER"} and exists $spark_conf->{"SPARK_HOME"} a
 if ($spark_conf->{"SCHEDULER"} ne "YARN") {
     die "Does not support ".$spark_conf->{"SCHEDULER"}." currently, only YARN mode supported";
 }
+# Add spark event configuration
+my $spark_event_log_dir = "/tmp/sparkLogs";
+if (exists $spark_conf->{"SPARK_DEFAULTS"}) {
+    if (exists $spark_conf->{"SPARK_DEFAULTS"}->{"spark.eventLog.enabled"}) {
+        $spark_conf->{"SPARK_DEFAULTS"}->{"spark.eventLog.enabled"} = "true";
+    }
+    if (exists $spark_conf->{"SPARK_DEFAULTS"}->{"spark.eventLog.dir"}) {
+        $spark_event_log_dir = $spark_conf->{"SPARK_DEFAULTS"}->{"spark.eventLog.dir"};
+    } else {
+        $spark_conf->{"SPARK_DEFAULTS"}->{"spark.eventLog.dir"} = $spark_event_log_dir;
+    }
+} else {
+    my %conf = ();
+    $conf{"spark.eventLog.enabled"} = "true";
+    $conf{"spark.eventLog.dir"} = $spark_event_log_dir;
+    $spark_conf->{"SPARK_DEFAULTS"} = \%conf;
+}
 
 my $scenario_text = do {
     open(my $json_fh, "<:encoding(UTF-8)", $case_scenario_fn) or die "Cannot open $case_scenario_fn for read!";
@@ -91,7 +108,7 @@ foreach my $node (@nodes) {
         $ssh_problem = 1;
         print "$node not reachable or passwordless not set\n";
     } else {
-        `ssh $node mkdir /tmp/sparkLogs > /dev/null 2>&1`;
+        `ssh $node mkdir $spark_event_log_dir > /dev/null 2>&1`;
         `ssh $node which dstat`;
         if ($? != 0) {
             $need_install_tools = 1;
@@ -139,6 +156,7 @@ export DESCRIPTION="$script_dir"
 export WORKLOAD_DIR="."      # The workload working directory
 export MEAS_DELAY_SEC=1      # Delay between each measurement
 export RUNDIR=\$(\${PMH}/setup-run.sh \$WORKLOAD_NAME)
+mkdir \$RUNDIR/spark_events
 
 # SLAVES config required by run-workload.sh
 unset SLAVES
@@ -310,9 +328,21 @@ EOF
             print $script_fh <<EOF;
 export RUN_ID=\"$step->{"TAG"}-0\"
 CMD=\"${cmd}\"
-CMD=\"\${CMD} > \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-0.log 2>&1\"
+CMD=\"\${CMD} > \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log 2>&1\"
 export WORKLOAD_CMD=\${CMD}
 \${PMH}/run-workload.sh
+grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log > /dev/null 2>&1
+if [ $? -eq 0 ]
+then
+    TGT_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk -F"file:" '{print \$2}'`;
+    DST_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
+    for SLAVE in \$SLAVES
+    do
+        scp \$SLAVE:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
+    done
+else
+    echo "################ Error, did not find event log info ##################"
+fi
 
 EOF
         } else {
@@ -332,9 +362,21 @@ EOF
             print $script_fh <<EOF;
     export RUN_ID=\"$step->{"TAG"}-\$ITER\"
     CMD=\"${cmd}\"
-    CMD=\"\${CMD} > \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-\$ITER.log 2>&1\"
+    CMD=\"\${CMD} > \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log 2>&1\"
     export WORKLOAD_CMD=\${CMD}
     \${PMH}/run-workload.sh
+    grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log > /dev/null 2>&1
+    if [ $? -eq 0 ]
+    then
+        TGT_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk -F"file:" '{print \$2}'`;
+        DST_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
+        for SLAVE in \$SLAVES
+        do
+            scp \$SLAVE:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
+        done
+    else
+        echo "################ Error, did not find event log info ##################"
+    fi
 done
 
 EOF
@@ -342,6 +384,7 @@ EOF
     }
 }
 
+# Restore SMT4 if SMT setting has been changed
 if ($smt_reset == 1) {
     print $script_fh <<EOF;
 # ACTION reset to SMT4 on all slave nodes
