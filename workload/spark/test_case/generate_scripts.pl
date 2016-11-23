@@ -478,6 +478,12 @@ done
 
 EOF
         }
+    } elsif (exists $step->{"SHELL"}) {
+        print $script_fh <<EOF;
+# SHELL command
+$step->{"SHELL"}
+
+EOF
     }
 }
 
