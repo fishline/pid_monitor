@@ -6,27 +6,36 @@ use JSON qw( );
 use File::Basename;
 
 if ($#ARGV + 1 != 1) {
-    die "Usage: ./generate_scripts.pl <TEST_CASE_TAG>";
+    die "Usage: ./generate_scripts.pl <TEST_PLAN_JSON>";
 }
 
-my $case_tag = $ARGV[0];
-if (not ((-e $case_tag."-spark-conf.json") and (-e $case_tag."-scenario.json"))) {
-    die "Please define JSON files for $case_tag, take example*.json as reference!";
-}
-my $case_spark_conf_fn = $case_tag."-spark-conf.json";
-my $case_scenario_fn = $case_tag."-scenario.json";
-
+my $test_plan_fn = $ARGV[0];
 ########## Load JSON definition from above two files ############
-my $spark_conf_text = do {
-    open(my $json_fh, "<:encoding(UTF-8)", $case_spark_conf_fn) or die "Cannot open $case_spark_conf_fn for read!";
+my $scenario_text = do {
+    open(my $json_fh, "<:encoding(UTF-8)", $test_plan_fn) or die "Cannot open $test_plan_fn for read!";
     local $/;
     <$json_fh>
 };
 my $json = JSON->new;
+my $scenario = $json->decode($scenario_text);
+my $spark_conf_fn = "";
+foreach my $step (@{$scenario}) {
+    if (exists $step->{"USE"}) {
+        $spark_conf_fn = $step->{"USE"};
+    }
+}
+if ($spark_conf_fn eq "") {
+    die "Please reference spark-conf.json using \"USE\" in your $test_plan_fn"
+}
+my $spark_conf_text = do {
+    open(my $json_fh, "<:encoding(UTF-8)", $spark_conf_fn) or die "Cannot open $spark_conf_fn for read!";
+    local $/;
+    <$json_fh>
+};
 my $spark_conf = $json->decode($spark_conf_text);
 # Sanity check
 if (not (exists $spark_conf->{"MASTER"} and exists $spark_conf->{"SPARK_HOME"} and exists $spark_conf->{"HADOOP_HOME"})) {
-    die "Please define MASTER/SPARK_HOME/HADOOP_HOME in $case_spark_conf_fn";
+    die "Please define MASTER/SPARK_HOME/HADOOP_HOME in $spark_conf_fn";
 }
 if (($spark_conf->{"SCHEDULER"} ne "YARN") and ($spark_conf->{"SCHEDULER"} ne "STANDALONE")) {
     die "Does not support ".$spark_conf->{"SCHEDULER"}.", only YARN/STANDALONE supported";
@@ -48,13 +57,6 @@ if (exists $spark_conf->{"SPARK_DEFAULTS"}) {
     $conf{"spark.eventLog.dir"} = $spark_event_log_dir;
     $spark_conf->{"SPARK_DEFAULTS"} = \%conf;
 }
-
-my $scenario_text = do {
-    open(my $json_fh, "<:encoding(UTF-8)", $case_scenario_fn) or die "Cannot open $case_scenario_fn for read!";
-    local $/;
-    <$json_fh>
-};
-my $scenario = $json->decode($scenario_text);
 
 ########### Verify the environment as defined in the JSON files ############
 # Check MASTE is current node
@@ -141,6 +143,10 @@ if (not (-e "../../../lpcpu.tar.bz2")) {
 # Header
 my $date_str = `date +"%Y%m%d%H%M%S"`;
 chomp($date_str);
+my $case_tag = $test_plan_fn;
+if ($case_tag =~ /(.*).json/) {
+    $case_tag = $1;
+}
 my $script_dir = $case_tag."-".$date_str;
 `mkdir $script_dir`;
 my $current_dir = `pwd`;

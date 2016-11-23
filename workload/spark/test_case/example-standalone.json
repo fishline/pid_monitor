@@ -1,5 +1,8 @@
 [
     {
+        "USE" : "example-standalone-spark-conf.json"
+    },
+    {
         "ACTION" : "CLEAR_SWAPPINESS"
     },
     {
@@ -25,7 +28,9 @@
                 "--master spark://<SPARK_MASTER_IP>:7077",
                 {
                     "--conf" : [
-                        "spark.executor.extraJavaOptions=\\\"-XX:ParallelGCThreads=4 -XX:+AlwaysTenure\\\""
+                        "spark.executor.extraJavaOptions=\\\"-XX:ParallelGCThreads=4 -XX:+AlwaysTenure\\\"",
+                        "spark.executor.memory=2g",
+                        "spark.driver.memory=1g"
                     ]
                 },
                 "org.apache.spark.examples.mllib.MovieLensALS",
@@ -51,7 +56,9 @@
                 "--master spark://<SPARK_MASTER_IP>:7077",
                 {
                     "--conf" : [
-                        "spark.executor.extraJavaOptions=\\\"-XX:ParallelGCThreads=2 -XX:+AlwaysTenure\\\""
+                        "spark.executor.extraJavaOptions=\\\"-XX:ParallelGCThreads=2 -XX:+AlwaysTenure\\\"",
+                        "spark.executor.memory=2g",
+                        "spark.driver.memory=1g"
                     ]
                 },
                 "org.apache.spark.examples.mllib.MovieLensALS",
