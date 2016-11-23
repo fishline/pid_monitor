@@ -439,8 +439,24 @@ then
 else
     echo "################ Error, did not find event log info ##################"
 fi
+EOF
+            if (exists $step->{"AFTER"}) {
+                if ($step->{"AFTER"} =~ /\<HADOOP_HOME\>/) {
+                    $step->{"AFTER"} =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
+                }
+                if ($step->{"AFTER"} =~ /\<SPARK_HOME\>/) {
+                    $step->{"AFTER"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
+                }
+                print $script_fh <<EOF;
+# AFTER command
+$step->{"AFTER"}
 
 EOF
+            } else {
+                print $script_fh <<EOF;
+
+EOF
+            }
         } else {
             print $script_fh <<EOF;
 for ITER in \$(seq $repeat)
@@ -474,9 +490,26 @@ EOF
     else
         echo "################ Error, did not find event log info ##################"
     fi
+EOF
+            if (exists $step->{"AFTER"}) {
+                if ($step->{"AFTER"} =~ /\<HADOOP_HOME\>/) {
+                    $step->{"AFTER"} =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
+                }
+                if ($step->{"AFTER"} =~ /\<SPARK_HOME\>/) {
+                    $step->{"AFTER"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
+                }
+                print $script_fh <<EOF;
+    # AFTER command
+    $step->{"AFTER"}
 done
 
 EOF
+            } else {
+                print $script_fh <<EOF;
+done
+
+EOF
+            }
         }
     } elsif (exists $step->{"SHELL"}) {
         if ($step->{"SHELL"} =~ /\<HADOOP_HOME\>/) {
