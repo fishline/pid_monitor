@@ -1,0 +1,69 @@
+[
+    {
+        "ACTION" : "CLEAR_SWAPPINESS"
+    },
+    {
+        "ACTION" : "HDFS",
+        "PARAM" : "STOP"
+    },
+    {
+        "ACTION" : "DROP_CACHE"
+    },
+    {
+        "ACTION" : "HDFS",
+        "PARAM" : "START"
+    },
+    {
+        "ACTION" : "WAIT",
+        "PARAM" : 20
+    },
+    {
+        "TAG" : "q1_exec1_vcore2",
+        "CMD" : {
+            "COMMAND" : "<SPARK_HOME>/bin/run-example",
+            "PARAM" : [
+                "--master spark://<SPARK_MASTER_IP>:7077",
+                {
+                    "--conf" : [
+                        "spark.executor.extraJavaOptions=\\\"-XX:ParallelGCThreads=4 -XX:+AlwaysTenure\\\""
+                    ]
+                },
+                "org.apache.spark.examples.mllib.MovieLensALS",
+                "--rank 5 --numIterations 5 --lambda 1.0 --kryo file://<SPARK_HOME>/sample_movielens_data.txt"
+            ]
+        },
+        "ENV" : [
+            "SPARK_WORKER_INSTANCES=1",
+            "SPARK_WORKER_CORES=2",
+            "SPARK_WORKER_MEMORY=2g"
+        ],
+        "REPEAT" : 1,
+        "DROP_CACHE_BETWEEN_REPEAT" : "FALSE"
+    },
+    {
+        "ACTION" : "DROP_CACHE"
+    },
+    {
+        "TAG" : "q1_exec2_vcore1",
+        "CMD" : {
+            "COMMAND" : "<SPARK_HOME>/bin/run-example",
+            "PARAM" : [
+                "--master spark://<SPARK_MASTER_IP>:7077",
+                {
+                    "--conf" : [
+                        "spark.executor.extraJavaOptions=\\\"-XX:ParallelGCThreads=2 -XX:+AlwaysTenure\\\""
+                    ]
+                },
+                "org.apache.spark.examples.mllib.MovieLensALS",
+                "--rank 5 --numIterations 5 --lambda 1.0 --kryo file://<SPARK_HOME>/sample_movielens_data.txt"
+            ]
+        },
+        "ENV" : [
+            "SPARK_WORKER_INSTANCES=2",
+            "SPARK_WORKER_CORES=1",
+            "SPARK_WORKER_MEMORY=2g"
+        ],
+        "REPEAT" : 2,
+        "DROP_CACHE_BETWEEN_REPEAT" : "TRUE"
+    }
+]
