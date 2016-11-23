@@ -354,7 +354,7 @@ echo "export $element" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 EOF
             }
             print $script_fh <<EOF;
-echo "export SPARK_MASTER_HOST=$master_ip" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+echo "export SPARK_MASTER_IP=$master_ip" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 for SLAVE in \$SLAVES
 do
     \\cp \$RUNDIR/.spark-env.sh.backup.\$SLAVE /tmp/spark-env.sh.backup.\$SLAVE
@@ -365,7 +365,7 @@ EOF
 EOF
             }
             print $script_fh <<EOF;
-    echo "export SPARK_MASTER_HOST=$master_ip" >> /tmp/spark-env.sh.backup.\$SLAVE
+    echo "export SPARK_MASTER_IP=$master_ip" >> /tmp/spark-env.sh.backup.\$SLAVE
     scp /tmp/spark-env.sh.backup.\$SLAVE \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 done
 $spark_conf->{"SPARK_HOME"}/sbin/start-all.sh
