@@ -493,7 +493,7 @@ $spark_conf->{"SPARK_HOME"}/sbin/stop-all.sh
 \\cp \$RUNDIR/.spark-env.sh.backup.master $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 for SLAVE in \$SLAVES
 do
-    scp $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh.\$SLAVE \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+    scp \$RUNDIR/.spark-env.sh.backup.\$SLAVE \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 done
 
 EOF
