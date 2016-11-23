@@ -18,6 +18,6 @@ fi
 START_TS=`grep "SparkListenerApplicationStart" $FILE | awk -FTimestamp\": '{print $2}' | awk -F, '{print $1}'`
 STOP_TS=`grep "SparkListenerApplicationEnd" $FILE | awk -FTimestamp\": '{print $2}' | awk -F} '{print $1}'`
 DELTA=`expr $STOP_TS \- $START_TS`
-DELTA_S=`expr $DELTA \/ 1000`
+DELTA_S=`bc <<< "scale=1; $DELTA/1000" | awk '{printf "%.1f", $0}'`
 echo $DELTA_S
 exit $RET

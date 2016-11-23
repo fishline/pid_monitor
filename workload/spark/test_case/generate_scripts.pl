@@ -63,6 +63,8 @@ if ($? != 0) {
     die "Please make sure to run the script from ".$spark_conf->{"MASTER"};
 }
 `ping $spark_conf->{"MASTER"} -c 1 | head -n 1 | awk -F\\( '{print \$2}' | awk -F\\) '{print \$1}' | xargs -i sh -c "ifconfig | grep {}"`;
+my $master_ip = `ping $spark_conf->{"MASTER"} -c 1 | head -n 1 | awk -F\\( '{print \$2}' | awk -F\\) '{print \$1}'`;
+chomp($master_ip);
 if ($? != 0) {
     die "Please make sure to run the script from ".$spark_conf->{"MASTER"};
 }
@@ -168,6 +170,18 @@ cp -R html \$RUNDIR/html
 
 EOF
 
+# Backup spark-env.sh if we are running in STANDALONE mode
+if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
+    print $script_fh <<EOF;
+cp $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh \$RUNDIR/.spark-env.sh.backup
+if [ ! -e $spark_conf->{"SPARK_HOME"}/conf/slaves ]
+then
+    cp $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves $spark_conf->{"SPARK_HOME"}/conf/slaves
+fi
+
+EOF
+}
+
 # *-scenario.json steps
 my $smt_reset = 0;
 foreach my $step (@{$scenario}) {
@@ -247,35 +261,70 @@ EOF
             $smt_reset = 1;
             $set_smt = $step->{"SMT"};
         }
-        # Calculate SMT setting if there is "--num-executors" and "--executor-cores" configured in CMD parameter
-        if (exists $step->{"CMD"}->{"PARAM"}) {
-            my $def_num_executors = 0;
-            my $def_executor_cores = 0;
-            foreach my $element (@{$step->{"CMD"}->{"PARAM"}}) {
-                if ($element =~ /--num-executors\s+([0-9]+)/) {
-                    $def_num_executors = $1;
+        if ($spark_conf->{"SCHEDULER"} eq "YARN") {
+            # Calculate SMT setting if there is "--num-executors" and "--executor-cores" configured in CMD parameter
+            if (exists $step->{"CMD"}->{"PARAM"}) {
+                my $def_num_executors = 0;
+                my $def_executor_cores = 0;
+                foreach my $element (@{$step->{"CMD"}->{"PARAM"}}) {
+                    if ($element =~ /--num-executors\s+([0-9]+)/) {
+                        $def_num_executors = $1;
+                    }
+                    if ($element =~ /--executor-cores\s+([0-9]+)/) {
+                        $def_executor_cores = $1;
+                    }
                 }
-                if ($element =~ /--executor-cores\s+([0-9]+)/) {
-                    $def_executor_cores = $1;
+                if (($def_num_executors > 0) and ($def_executor_cores > 0)) {
+                    $smt_changed = 1;
+                    $smt_reset = 1;
+                    my $total_cores_required = $def_num_executors * $def_executor_cores;
+                    my $smt_ratio = ($total_cores_required * 1.0)/($total_cores_online * 1.0);
+                    if ($smt_ratio <= 1.0) {
+                        $set_smt = 1;
+                    } elsif ($smt_ratio <= 2.0) {
+                        $set_smt = 2;
+                    } elsif ($smt_ratio <= 4.0) {
+                        $set_smt = 4;
+                    } elsif ($smt_ratio <= 8.0) {
+                        $set_smt = 8;
+                    } else {
+                        close $script_fh;
+                        `rm -rf $script_dir_full`;
+                        die "TAG ".$step->{"TAG"}." --num-executors X --executor-cores exceed available cores in all slaves";
+                    }
                 }
             }
-            if (($def_num_executors > 0) and ($def_executor_cores > 0)) {
-                $smt_changed = 1;
-                $smt_reset = 1;
-                my $total_cores_required = $def_num_executors * $def_executor_cores;
-                my $smt_ratio = ($total_cores_required * 1.0)/($total_cores_online * 1.0);
-                if ($smt_ratio <= 1.0) {
-                    $set_smt = 1;
-                } elsif ($smt_ratio <= 2.0) {
-                    $set_smt = 2;
-                } elsif ($smt_ratio <= 4.0) {
-                    $set_smt = 4;
-                } elsif ($smt_ratio <= 8.0) {
-                    $set_smt = 8;
-                } else {
-                    close $script_fh;
-                    `rm -rf $script_dir_full`;
-                    die "TAG ".$step->{"TAG"}." --num-executors X --executor-cores exceed available cores in all slaves";
+        } else {
+            # Calculate SMT setting if there is "SPARK_WORKER_INSTANCES" and "SPARK_WORKER_CORES" configured in ENV section
+            if (exists $step->{"ENV"}) {
+                my $def_worker_instances = 0;
+                my $def_worker_cores = 0;
+                foreach my $element (@{$step->{"ENV"}}) {
+                    if ($element =~ /SPARK_WORKER_INSTANCES=([0-9]+)/) {
+                        $def_worker_instances = $1;
+                    }
+                    if ($element =~ /SPARK_WORKER_CORES=([0-9]+)/) {
+                        $def_worker_cores = $1;
+                    }
+                }
+                if (($def_worker_instances > 0) and ($def_worker_cores > 0)) {
+                    $smt_changed = 1;
+                    $smt_reset = 1;
+                    my $node_cores_required = $def_worker_instances * $def_worker_cores;
+                    my $smt_ratio = ($node_cores_required * 1.0)/($cores * 1.0);
+                    if ($smt_ratio <= 1.0) {
+                        $set_smt = 1;
+                    } elsif ($smt_ratio <= 2.0) {
+                        $set_smt = 2;
+                    } elsif ($smt_ratio <= 4.0) {
+                        $set_smt = 4;
+                    } elsif ($smt_ratio <= 8.0) {
+                        $set_smt = 8;
+                    } else {
+                        close $script_fh;
+                        `rm -rf $script_dir_full`;
+                        die "TAG ".$step->{"TAG"}." SPARK_WORKER_INSTANCES X SPARK_WORKER_CORES exceed available cores in all slaves";
+                    }
                 }
             }
         }
@@ -288,6 +337,27 @@ echo "SET SMT to $set_smt on all slaves"
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=$set_smt"
 EOF
         }
+
+        # For standalone mode, need to update spark-env.sh with ENV, then restart master/slaves
+        if (($spark_conf->{"SCHEDULER"} eq "STANDALONE") and (exists $step->{"ENV"})) {
+            print $script_fh <<EOF;
+$spark_conf->{"SPARK_HOME"}/sbin/stop-all.sh
+\\cp \$RUNDIR/.spark-env.sh.backup $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+EOF
+            foreach my $element (@{$step->{"ENV"}}) {
+                print $script_fh <<EOF;
+echo "export $element" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+EOF
+            }
+            print $script_fh <<EOF;
+for SLAVE in \$SLAVES
+do
+    scp $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+done
+$spark_conf->{"SPARK_HOME"}/sbin/start-all.sh
+EOF
+        }
+
         my $cmd = "";
         if ($step->{"CMD"}->{"COMMAND"} =~ /\<SPARK_HOME\>/) {
             $step->{"CMD"}->{"COMMAND"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
@@ -311,6 +381,9 @@ EOF
                 } else {
                     if ($element =~ /\<SPARK_HOME\>/) {
                         $element =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
+                    }
+                    if ($element =~ /\<SPARK_MASTER_IP\>/) {
+                        $element =~ s/\<SPARK_MASTER_IP\>/$master_ip/;
                     }
                     $cmd = $cmd." ".$element;
                 }
@@ -338,20 +411,11 @@ if [ $? -eq 0 ]
 then
     TGT_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk -F"file:" '{print \$2}'`;
     DST_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
-EOF
-            if ($spark_conf->{"SCHEDULER"} eq "YARN") {
-                print $script_fh <<EOF;
     for SLAVE in \$SLAVES
     do
         scp \$SLAVE:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
     done
-EOF
-            } else {
-                print $script_fh <<EOF;
-    cp \$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
-EOF
-            }
-            print $script_fh <<EOF;
+    scp $spark_conf->{"MASTER"}:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
 else
     echo "################ Error, did not find event log info ##################"
 fi
@@ -382,21 +446,11 @@ EOF
     then
         TGT_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk -F"file:" '{print \$2}'`;
         DST_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
-EOF
-
-            if ($spark_conf->{"SCHEDULER"} eq "YARN") {
-                print $script_fh <<EOF;
         for SLAVE in \$SLAVES
         do
             scp \$SLAVE:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
         done
-EOF
-            } else {
-                print $script_fh <<EOF;
-        cp \$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
-EOF
-            }
-            print $script_fh <<EOF;
+        scp $spark_conf->{"MASTER"}:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
     else
         echo "################ Error, did not find event log info ##################"
     fi
@@ -414,6 +468,19 @@ if ($smt_reset == 1) {
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=4"
 
 \$PMH/create_summary_table.py \$RUNDIR/html/config.json > \$RUNDIR/html/summary.html
+
+EOF
+}
+
+# Restore spark-env.sh if we are running in STANDALONE mode
+if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
+    print $script_fh <<EOF;
+$spark_conf->{"SPARK_HOME"}/sbin/stop-all.sh
+\\cp \$RUNDIR/.spark-env.sh.backup $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+for SLAVE in \$SLAVES
+do
+    scp $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+done
 
 EOF
 }
