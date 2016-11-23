@@ -173,7 +173,11 @@ EOF
 # Backup spark-env.sh if we are running in STANDALONE mode
 if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
     print $script_fh <<EOF;
-cp $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh \$RUNDIR/.spark-env.sh.backup
+cp $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh \$RUNDIR/.spark-env.sh.backup.master
+for SLAVE in \$SLAVES
+do
+    scp \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh \$RUNDIR/.spark-env.sh.backup.\$SLAVE
+done
 if [ ! -e $spark_conf->{"SPARK_HOME"}/conf/slaves ]
 then
     cp $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves $spark_conf->{"SPARK_HOME"}/conf/slaves
@@ -342,7 +346,7 @@ EOF
         if (($spark_conf->{"SCHEDULER"} eq "STANDALONE") and (exists $step->{"ENV"})) {
             print $script_fh <<EOF;
 $spark_conf->{"SPARK_HOME"}/sbin/stop-all.sh
-\\cp \$RUNDIR/.spark-env.sh.backup $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+\\cp \$RUNDIR/.spark-env.sh.backup.master $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 EOF
             foreach my $element (@{$step->{"ENV"}}) {
                 print $script_fh <<EOF;
@@ -350,9 +354,19 @@ echo "export $element" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 EOF
             }
             print $script_fh <<EOF;
+echo "export SPARK_MASTER_HOST=$master_ip" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 for SLAVE in \$SLAVES
 do
-    scp $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+    \\cp \$RUNDIR/.spark-env.sh.backup.\$SLAVE /tmp/spark-env.sh.backup.\$SLAVE
+EOF
+            foreach my $element (@{$step->{"ENV"}}) {
+                print $script_fh <<EOF;
+    echo "export $element" >> /tmp/spark-env.sh.backup.\$SLAVE
+EOF
+            }
+            print $script_fh <<EOF;
+    echo "export SPARK_MASTER_HOST=$master_ip" >> /tmp/spark-env.sh.backup.\$SLAVE
+    scp /tmp/spark-env.sh.backup.\$SLAVE \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 done
 $spark_conf->{"SPARK_HOME"}/sbin/start-all.sh
 EOF
@@ -476,10 +490,10 @@ EOF
 if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
     print $script_fh <<EOF;
 $spark_conf->{"SPARK_HOME"}/sbin/stop-all.sh
-\\cp \$RUNDIR/.spark-env.sh.backup $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+\\cp \$RUNDIR/.spark-env.sh.backup.master $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 for SLAVE in \$SLAVES
 do
-    scp $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+    scp $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh.\$SLAVE \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 done
 
 EOF
