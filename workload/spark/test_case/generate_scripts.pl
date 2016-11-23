@@ -479,6 +479,12 @@ done
 EOF
         }
     } elsif (exists $step->{"SHELL"}) {
+        if ($step->{"SHELL"} =~ /\<HADOOP_HOME\>/) {
+            $step->{"SHELL"} =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
+        }
+        if ($step->{"SHELL"} =~ /\<SPARK_HOME\>/) {
+            $step->{"SHELL"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
+        }
         print $script_fh <<EOF;
 # SHELL command
 $step->{"SHELL"}
