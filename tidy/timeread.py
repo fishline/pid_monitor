@@ -51,9 +51,11 @@ class TimeMeasurement(measurement.Measurement):
             for f in files:
                 if subprocess.call(pmh + "/workload/spark/scripts/analyze_spark_event_log.sh " + run_dir + "/spark_events/" + f + " > /dev/null 2>&1", shell=True) == 0:
                     self.success_count += 1
+                    duration.append(float(subprocess.check_output(pmh + "/workload/spark/scripts/analyze_spark_event_log.sh " + run_dir + "/spark_events/" + f, shell=True)))
                 else:
                     self.fail_count += 1
-                duration.append(float(subprocess.check_output(pmh + "/workload/spark/scripts/analyze_spark_event_log.sh " + run_dir + "/spark_events/" + f, shell=True)))
+            if len(duration) == 0:
+                duration.append(0.0)
             self.min_sec = min(duration)
             self.max_sec = max(duration)
             quotient, remainder = divmod(len(duration), 2)
