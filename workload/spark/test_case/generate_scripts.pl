@@ -67,7 +67,6 @@ if (-e $spark_conf->{"SPARK_HOME"}."/conf/spark-defaults.conf") {
         chomp($default_spark_event_dir);
     }
 }
-print "default log dir: ".$default_spark_event_dir."\n";
 
 ########### Verify the environment as defined in the JSON files ############
 # Check MASTE is current node
