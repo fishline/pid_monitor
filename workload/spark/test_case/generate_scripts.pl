@@ -58,6 +58,17 @@ if (exists $spark_conf->{"SPARK_DEFAULTS"}) {
     $spark_conf->{"SPARK_DEFAULTS"} = \%conf;
 }
 
+# Get the default spark event log dir from spark-defaults.conf if that is defined
+my $default_spark_event_dir = "";
+if (-e $spark_conf->{"SPARK_HOME"}."/conf/spark-defaults.conf") {
+    `grep spark.eventLog.dir $spark_conf->{"SPARK_HOME"}/conf/spark-defaults.conf`;
+    if ($? == 0) {
+        $default_spark_event_dir = `grep spark.eventLog.dir $spark_conf->{"SPARK_HOME"}/conf/spark-defaults.conf | awk '{print \$2}'`;
+        chomp($default_spark_event_dir);
+    }
+}
+print "default log dir: ".$default_spark_event_dir."\n";
+
 ########### Verify the environment as defined in the JSON files ############
 # Check MASTE is current node
 my $ping_result = `ping $spark_conf->{"MASTER"} -c 1`;
@@ -250,6 +261,7 @@ EOF
             die "ACTION:".$step->{"ACTION"}." is not supported!";
         }
     } elsif (exists $step->{"TAG"}) {
+        my $current_spark_event_dir = "";
         my $smt_changed = 0;
         my $tag_idx = 0;
         if (not (exists $step->{"CMD"})) {
@@ -389,6 +401,7 @@ EOF
                 if (ref($element) eq "HASH") {
                     if (exists $element->{"--conf"}) {
                         $def_conf = 1;
+                        $current_spark_event_dir = $spark_event_log_dir;
                         foreach my $conf (@{$element->{"--conf"}}) {
                             $cmd = $cmd." --conf ".$conf;
                         }
@@ -418,6 +431,11 @@ EOF
                 `rm -rf $script_dir_full`;
                 exit 1;
             }
+            if ($default_spark_event_dir eq "") {
+                $current_spark_event_dir = "/tmp/spark-events";
+            } else {
+                $current_spark_event_dir = $default_spark_event_dir;
+            }
         }
         if ($repeat == 1) {
             print $script_fh <<EOF;
@@ -437,7 +455,19 @@ then
     done
     scp $spark_conf->{"MASTER"}:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
 else
-    echo "################ Error, did not find event log info ##################"
+EOF
+            print $script_fh <<EOF;
+    grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log > /dev/null 2>&1
+    if [ $? -eq 0 ]
+    then
+        DST_EVENT_LOG_FN=`grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk '{print \$NF}'`;
+        for SLAVE in \$SLAVES
+        do
+            scp \$SLAVE:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
+        done
+    else
+        echo "Cannot find app-ID, maybe running in standalone mode and disabled app INFO console log?"
+    fi
 fi
 EOF
             if (exists $step->{"AFTER"}) {
@@ -488,7 +518,19 @@ EOF
         done
         scp $spark_conf->{"MASTER"}:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
     else
-        echo "################ Error, did not find event log info ##################"
+EOF
+            print $script_fh <<EOF;
+        grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log > /dev/null 2>&1
+        if [ $? -eq 0 ]
+        then
+            DST_EVENT_LOG_FN=`grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk '{print \$NF}'`;
+            for SLAVE in \$SLAVES
+            do
+                scp \$SLAVE:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
+            done
+        else
+            echo "Cannot find app-ID, maybe running in standalone mode and disabled app INFO console log?"
+        fi
     fi
 EOF
             if (exists $step->{"AFTER"}) {
@@ -546,6 +588,12 @@ for SLAVE in \$SLAVES
 do
     scp \$RUNDIR/.spark-env.sh.backup.\$SLAVE \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 done
+
+EOF
+} else {
+    print $script_fh <<EOF;
+# Shutdown yarn scheduler finally
+$spark_conf->{"HADOOP_HOME"}/sbin/stop-yarn.sh
 
 EOF
 }
