@@ -444,7 +444,7 @@ CMD=\"\${CMD} > \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.
 export WORKLOAD_CMD=\${CMD}
 \${PMH}/run-workload.sh
 grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log > /dev/null 2>&1
-if [ $? -eq 0 ]
+if [ \$? -eq 0 ]
 then
     TGT_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk -F"file:" '{print \$2}'`;
     DST_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
@@ -457,7 +457,7 @@ else
 EOF
             print $script_fh <<EOF;
     grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log > /dev/null 2>&1
-    if [ $? -eq 0 ]
+    if [ \$? -eq 0 ]
     then
         DST_EVENT_LOG_FN=`grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk '{print \$NF}'`;
         for SLAVE in \$SLAVES
@@ -507,7 +507,7 @@ EOF
     export WORKLOAD_CMD=\${CMD}
     \${PMH}/run-workload.sh
     grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log > /dev/null 2>&1
-    if [ $? -eq 0 ]
+    if [ \$? -eq 0 ]
     then
         TGT_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk -F"file:" '{print \$2}'`;
         DST_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
@@ -520,7 +520,7 @@ EOF
 EOF
             print $script_fh <<EOF;
         grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log > /dev/null 2>&1
-        if [ $? -eq 0 ]
+        if [ \$? -eq 0 ]
         then
             DST_EVENT_LOG_FN=`grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk '{print \$NF}'`;
             for SLAVE in \$SLAVES
