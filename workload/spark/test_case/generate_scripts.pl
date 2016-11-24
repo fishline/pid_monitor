@@ -464,6 +464,7 @@ EOF
         do
             scp \$SLAVE:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
         done
+        scp $spark_conf->{"MASTER"}:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
     else
         echo "Cannot find app-ID, maybe running in standalone mode and disabled app INFO console log?"
     fi
@@ -527,6 +528,7 @@ EOF
             do
                 scp \$SLAVE:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
             done
+            scp $spark_conf->{"MASTER"}:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
         else
             echo "Cannot find app-ID, maybe running in standalone mode and disabled app INFO console log?"
         fi
