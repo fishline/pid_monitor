@@ -107,15 +107,21 @@ foreach my $node (@nodes) {
         $first_slave = $node;
     }
 }
-my $cores_online = `ssh $first_slave ppc64_cpu --cores-on`;
+
+my $cores_online = "";
 my $cores = 0;
-if ($cores_online =~ /Number of cores online = ([0-9]+)$/) {
-    $cores = $1;
+my $total_cores_online = 0;
+if ($is_power == 1) {
+    $cores_online = `ssh $first_slave ppc64_cpu --cores-on`;
+    if ($cores_online =~ /Number of cores online = ([0-9]+)$/) {
+        $cores = $1;
+    }
+    $total_cores_online = $cores * $slave_count;
+    if ($cores == 0) {
+        die "Cannot get online cores info from \"ppc64_cpu --cores-on\"";
+    }
 }
-my $total_cores_online = $cores * $slave_count;
-if ($cores == 0) {
-    die "Cannot get online cores info from \"ppc64_cpu --cores-on\"";
-}
+
 push (@nodes, $spark_conf->{"MASTER"});
 if ($#nodes == 0) {
     die "Slave nodes not defined in ".$spark_conf->{"HADOOP_HOME"}."/etc/hadoop/slaves";
