@@ -140,10 +140,12 @@ foreach my $node (@nodes) {
             $need_install_tools = 1;
             print "Please install dstat on $node\n";
         }
-        `ssh $node which ppc64_cpu`;
-        if ($? != 0) {
-            $need_install_tools = 1;
-            print "Please install ppc64_cpu on $node\n";
+        if ($is_power == 1) {
+            `ssh $node which ppc64_cpu`;
+            if ($? != 0) {
+                $need_install_tools = 1;
+                print "Please install ppc64_cpu on $node\n";
+            }
         }
     }
 }
