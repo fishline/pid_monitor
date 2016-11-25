@@ -590,11 +590,13 @@ if (($is_power == 1) and ($smt_reset == 1)) {
     print $script_fh <<EOF;
 # ACTION reset to SMT4 on all slave nodes
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=4"
+EOF
+}
 
+print $script_fh <<EOF;
 \$PMH/create_summary_table.py \$RUNDIR/html/config.json > \$RUNDIR/html/summary.html
 
 EOF
-}
 
 # Restore spark-env.sh if we are running in STANDALONE mode
 if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
