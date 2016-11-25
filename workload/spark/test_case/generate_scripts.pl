@@ -9,6 +9,12 @@ if ($#ARGV + 1 != 1) {
     die "Usage: ./generate_scripts.pl <TEST_PLAN_JSON>";
 }
 
+my $is_power = 0;
+`uname -a | grep ppc64le`;
+if ($? == 0) {
+    $is_power = 1;
+}
+
 my $test_plan_fn = $ARGV[0];
 ########## Load JSON definition from above two files ############
 my $scenario_text = do {
@@ -276,87 +282,89 @@ EOF
         if ((exists $step->{"DROP_CACHE_BETWEEN_REPEAT"}) and ($step->{"DROP_CACHE_BETWEEN_REPEAT"} eq "TRUE")) {
             $drop_cache_between_run = 1;
         }
-        my $set_smt = 0;
-        if (exists $step->{"SMT"}) {
-            $smt_changed = 1;
-            $smt_reset = 1;
-            $set_smt = $step->{"SMT"};
-        }
-        if ($spark_conf->{"SCHEDULER"} eq "YARN") {
-            # Calculate SMT setting if there is "--num-executors" and "--executor-cores" configured in CMD parameter
-            if (exists $step->{"CMD"}->{"PARAM"}) {
-                my $def_num_executors = 0;
-                my $def_executor_cores = 0;
-                foreach my $element (@{$step->{"CMD"}->{"PARAM"}}) {
-                    if ($element =~ /--num-executors\s+([0-9]+)/) {
-                        $def_num_executors = $1;
+        if ($is_power == 1) {
+            my $set_smt = 0;
+            if (exists $step->{"SMT"}) {
+                $smt_changed = 1;
+                $smt_reset = 1;
+                $set_smt = $step->{"SMT"};
+            }
+            if ($spark_conf->{"SCHEDULER"} eq "YARN") {
+                # Calculate SMT setting if there is "--num-executors" and "--executor-cores" configured in CMD parameter
+                if (exists $step->{"CMD"}->{"PARAM"}) {
+                    my $def_num_executors = 0;
+                    my $def_executor_cores = 0;
+                    foreach my $element (@{$step->{"CMD"}->{"PARAM"}}) {
+                        if ($element =~ /--num-executors\s+([0-9]+)/) {
+                            $def_num_executors = $1;
+                        }
+                        if ($element =~ /--executor-cores\s+([0-9]+)/) {
+                            $def_executor_cores = $1;
+                        }
                     }
-                    if ($element =~ /--executor-cores\s+([0-9]+)/) {
-                        $def_executor_cores = $1;
+                    if (($def_num_executors > 0) and ($def_executor_cores > 0)) {
+                        $smt_changed = 1;
+                        $smt_reset = 1;
+                        my $total_cores_required = $def_num_executors * $def_executor_cores;
+                        my $smt_ratio = ($total_cores_required * 1.0)/($total_cores_online * 1.0);
+                        if ($smt_ratio <= 1.0) {
+                            $set_smt = 1;
+                        } elsif ($smt_ratio <= 2.0) {
+                            $set_smt = 2;
+                        } elsif ($smt_ratio <= 4.0) {
+                            $set_smt = 4;
+                        } elsif ($smt_ratio <= 8.0) {
+                            $set_smt = 8;
+                        } else {
+                            close $script_fh;
+                            `rm -rf $script_dir_full`;
+                            die "TAG ".$step->{"TAG"}." --num-executors X --executor-cores exceed available cores in all slaves";
+                        }
                     }
                 }
-                if (($def_num_executors > 0) and ($def_executor_cores > 0)) {
-                    $smt_changed = 1;
-                    $smt_reset = 1;
-                    my $total_cores_required = $def_num_executors * $def_executor_cores;
-                    my $smt_ratio = ($total_cores_required * 1.0)/($total_cores_online * 1.0);
-                    if ($smt_ratio <= 1.0) {
-                        $set_smt = 1;
-                    } elsif ($smt_ratio <= 2.0) {
-                        $set_smt = 2;
-                    } elsif ($smt_ratio <= 4.0) {
-                        $set_smt = 4;
-                    } elsif ($smt_ratio <= 8.0) {
-                        $set_smt = 8;
-                    } else {
-                        close $script_fh;
-                        `rm -rf $script_dir_full`;
-                        die "TAG ".$step->{"TAG"}." --num-executors X --executor-cores exceed available cores in all slaves";
+            } else {
+                # Calculate SMT setting if there is "SPARK_WORKER_INSTANCES" and "SPARK_WORKER_CORES" configured in ENV section
+                if (exists $step->{"ENV"}) {
+                    my $def_worker_instances = 0;
+                    my $def_worker_cores = 0;
+                    foreach my $element (@{$step->{"ENV"}}) {
+                        if ($element =~ /SPARK_WORKER_INSTANCES=([0-9]+)/) {
+                            $def_worker_instances = $1;
+                        }
+                        if ($element =~ /SPARK_WORKER_CORES=([0-9]+)/) {
+                            $def_worker_cores = $1;
+                        }
+                    }
+                    if (($def_worker_instances > 0) and ($def_worker_cores > 0)) {
+                        $smt_changed = 1;
+                        $smt_reset = 1;
+                        my $node_cores_required = $def_worker_instances * $def_worker_cores;
+                        my $smt_ratio = ($node_cores_required * 1.0)/($cores * 1.0);
+                        if ($smt_ratio <= 1.0) {
+                            $set_smt = 1;
+                        } elsif ($smt_ratio <= 2.0) {
+                            $set_smt = 2;
+                        } elsif ($smt_ratio <= 4.0) {
+                            $set_smt = 4;
+                        } elsif ($smt_ratio <= 8.0) {
+                            $set_smt = 8;
+                        } else {
+                            close $script_fh;
+                            `rm -rf $script_dir_full`;
+                            die "TAG ".$step->{"TAG"}." SPARK_WORKER_INSTANCES X SPARK_WORKER_CORES exceed available cores in all slaves";
+                        }
                     }
                 }
             }
-        } else {
-            # Calculate SMT setting if there is "SPARK_WORKER_INSTANCES" and "SPARK_WORKER_CORES" configured in ENV section
-            if (exists $step->{"ENV"}) {
-                my $def_worker_instances = 0;
-                my $def_worker_cores = 0;
-                foreach my $element (@{$step->{"ENV"}}) {
-                    if ($element =~ /SPARK_WORKER_INSTANCES=([0-9]+)/) {
-                        $def_worker_instances = $1;
-                    }
-                    if ($element =~ /SPARK_WORKER_CORES=([0-9]+)/) {
-                        $def_worker_cores = $1;
-                    }
-                }
-                if (($def_worker_instances > 0) and ($def_worker_cores > 0)) {
-                    $smt_changed = 1;
-                    $smt_reset = 1;
-                    my $node_cores_required = $def_worker_instances * $def_worker_cores;
-                    my $smt_ratio = ($node_cores_required * 1.0)/($cores * 1.0);
-                    if ($smt_ratio <= 1.0) {
-                        $set_smt = 1;
-                    } elsif ($smt_ratio <= 2.0) {
-                        $set_smt = 2;
-                    } elsif ($smt_ratio <= 4.0) {
-                        $set_smt = 4;
-                    } elsif ($smt_ratio <= 8.0) {
-                        $set_smt = 8;
-                    } else {
-                        close $script_fh;
-                        `rm -rf $script_dir_full`;
-                        die "TAG ".$step->{"TAG"}." SPARK_WORKER_INSTANCES X SPARK_WORKER_CORES exceed available cores in all slaves";
-                    }
-                }
-            }
-        }
-        print $script_fh <<EOF;
+            print $script_fh <<EOF;
 # TEST STEP:$step->{"TAG"}
 EOF
-        if ($smt_changed == 1) {
-            print $script_fh <<EOF;
+            if ($smt_changed == 1) {
+                print $script_fh <<EOF;
 echo "SET SMT to $set_smt on all slaves"
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=$set_smt"
 EOF
+            }
         }
 
         # For standalone mode, need to update spark-env.sh with ENV, then restart master/slaves
@@ -570,7 +578,7 @@ EOF
 }
 
 # Restore SMT4 if SMT setting has been changed
-if ($smt_reset == 1) {
+if (($is_power == 1) and ($smt_reset == 1)) {
     print $script_fh <<EOF;
 # ACTION reset to SMT4 on all slave nodes
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=4"
