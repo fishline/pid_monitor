@@ -375,6 +375,17 @@ echo "SET SMT to $set_smt on all slaves"
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=$set_smt"
 EOF
             }
+        } else {
+            if (exists $step->{"ENV"}) {
+                foreach my $element (@{$step->{"ENV"}}) {
+                    if ($element =~ /SPARK_WORKER_INSTANCES=([0-9]+)/) {
+                        $def_worker_instances = $1;
+                    }
+                    if ($element =~ /SPARK_WORKER_CORES=([0-9]+)/) {
+                        $def_worker_cores = $1;
+                    }
+                }
+            }
         }
 
         # For standalone mode, need to update spark-env.sh with ENV, then restart master/slaves
