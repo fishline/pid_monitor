@@ -218,6 +218,10 @@ EOF
 
 # *-scenario.json steps
 my $smt_reset = 0;
+my $last_worker_instances = 0;
+my $last_worker_cores = 0;
+my $def_worker_instances = 0;
+my $def_worker_cores = 0;
 foreach my $step (@{$scenario}) {
     if (exists $step->{"ACTION"}) {
         if ($step->{"ACTION"} eq "CLEAR_SWAPPINESS") {
@@ -333,8 +337,6 @@ EOF
             } else {
                 # Calculate SMT setting if there is "SPARK_WORKER_INSTANCES" and "SPARK_WORKER_CORES" configured in ENV section
                 if (exists $step->{"ENV"}) {
-                    my $def_worker_instances = 0;
-                    my $def_worker_cores = 0;
                     foreach my $element (@{$step->{"ENV"}}) {
                         if ($element =~ /SPARK_WORKER_INSTANCES=([0-9]+)/) {
                             $def_worker_instances = $1;
@@ -376,7 +378,7 @@ EOF
         }
 
         # For standalone mode, need to update spark-env.sh with ENV, then restart master/slaves
-        if (($spark_conf->{"SCHEDULER"} eq "STANDALONE") and (exists $step->{"ENV"})) {
+        if (($spark_conf->{"SCHEDULER"} eq "STANDALONE") and (exists $step->{"ENV"}) and (($last_worker_instances != $def_worker_instances) or ($last_worker_cores != $def_worker_cores))) {
             print $script_fh <<EOF;
 $spark_conf->{"SPARK_HOME"}/sbin/stop-all.sh
 \\cp \$RUNDIR/.spark-env.sh.backup.master $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
@@ -570,6 +572,8 @@ done
 EOF
             }
         }
+        $last_worker_instances = $def_worker_instances;
+        $last_worker_cores = $def_worker_cores;
     } elsif (exists $step->{"SHELL"}) {
         if ($step->{"SHELL"} =~ /\<HADOOP_HOME\>/) {
             $step->{"SHELL"} =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
