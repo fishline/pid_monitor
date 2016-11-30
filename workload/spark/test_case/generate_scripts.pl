@@ -188,6 +188,7 @@ ctrl_c_exit() {
     then
         echo "Got command to kill \$CMD_TO_KILL"
         `ps -ef | grep "\$CMD_TO_KILL" | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}`
+        `ps -ef | grep java | grep SparkSubmit | awk '{print \$2}' | xargs -i kill -9 {}`
 EOF
 
 # Restore SMT4 if SMT setting has been changed
