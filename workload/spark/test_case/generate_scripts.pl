@@ -276,6 +276,7 @@ my $last_worker_instances = 0;
 my $last_worker_cores = 0;
 my $def_worker_instances = 0;
 my $def_worker_cores = 0;
+my $change_smt = 1;
 foreach my $step (@{$scenario}) {
     if (exists $step->{"ACTION"}) {
         if ($step->{"ACTION"} eq "CLEAR_SWAPPINESS") {
@@ -348,7 +349,7 @@ EOF
         if ((exists $step->{"DROP_CACHE_BETWEEN_REPEAT"}) and ($step->{"DROP_CACHE_BETWEEN_REPEAT"} eq "TRUE")) {
             $drop_cache_between_run = 1;
         }
-        if ($is_power == 1) {
+        if (($is_power == 1) and ($change_smt == 1)) {
             my $set_smt = 0;
             if (exists $step->{"SMT"}) {
                 $smt_changed = 1;
@@ -655,6 +656,12 @@ EOF
 $step->{"SHELL"}
 
 EOF
+    } elsif (exists $step->{"CHANGE_SMT"}) {
+        if ($step->{"CHANGE_SMT"} eq "YES") {
+            $change_smt = 1;
+        } elsif ($step->{"CHANGE_SMT"} eq "NO") {
+            $change_smt = 0;
+        }
     }
 }
 
