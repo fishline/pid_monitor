@@ -27,11 +27,12 @@ class TimeMeasurement(measurement.Measurement):
         #self.cpu_pct = ''
         self.success_count = 0
         self.fail_count = 0
-	self.count = ""
+        self.count = ""
         self.min_sec = 0
         self.max_sec = 0
         self.median_sec = 0
-        self._expected_length = 6  # Change this when adding new fields
+        self.spark_event_log = "NA"
+        self._expected_length = 7  # Change this when adding new fields
 
     def parse(self, time_fn, run_id, run_count):
         '''
@@ -63,9 +64,17 @@ class TimeMeasurement(measurement.Measurement):
                 self.median_sec = sorted(duration)[quotient]
             else:
                 self.median_sec = sum(sorted(duration)[quotient - 1:quotient + 1]) / 2
+
+            # Get Spark event log link for this run
+            event_log_fn = subprocess.check_output("ls " + run_dir + "/spark_events/*" + run_id + "-ITER* | head -n 1 | awk -F/ '{print $NF}' | awk -F\"-" + run_id + "-ITER\" '{print $1}'", shell=True)
+            if subprocess.call("ps -ef | grep java | grep -i historyserver | grep -v org.apache.hadoop.mapreduce.v2.hs.JobHistoryServer | awk '{print $2}' | xargs -i sh -c \"netstat -nap | grep {}\" | grep LISTEN | awk '{print $4}' | awk -F: '{print $NF}'", shell=True) == 0:
+                port = subprocess.check_output("ps -ef | grep java | grep -i historyserver | grep -v org.apache.hadoop.mapreduce.v2.hs.JobHistoryServer | awk '{print $2}' | xargs -i sh -c \"netstat -nap | grep {}\" | grep LISTEN | awk '{print $4}' | awk -F: '{print $NF}'", shell=True)
+                if subprocess.call("ip route show | grep ^default | awk '{print $5}' | xargs -i ifconfig {} | grep netmask | awk '{print $2}'", shell=True) == 0:
+                    ip = subprocess.check_output("ip route show | grep ^default | awk '{print $5}' | xargs -i ifconfig {} | grep netmask | awk '{print $2}'", shell=True)
+                    self.spark_event_log = "<a href=\"http://" + ip + ":" + port + "/history/" + event_log_fn  + "\">" + event_log_fn + "</a>"
         else:
             self.fail_count = run_count
-	self.count = str(self.success_count) + "/" + str(self.fail_count)
+        self.count = str(self.success_count) + "/" + str(self.fail_count)
         
         #try:
         #    with open(time_fn, 'r') as fid:

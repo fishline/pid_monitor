@@ -51,16 +51,18 @@ def create_table(config_fn):
     ids = config['run_ids']
     html_rows = []
     csv_rows = []
-    fields = ['run_id', 'count', 'min_sec', 'median_sec', 'max_sec']
+    fields = ['run_id', 'count', 'min_sec', 'median_sec', 'max_sec', 'spark_event_log']
     csv_fields = ['run_id', 'count', 'median_sec']
     run_ids = dict()
+    ids_in_order = []
     for run_id in ids:
         m = re.search("^(.*)-ITER([0-9]*)", run_id)
         if m.groups(0)[0] in run_ids:
             run_ids[m.groups(0)[0]] += 1
         else:
             run_ids[m.groups(0)[0]] = 1
-    for run_id in run_ids.keys():
+            ids_in_order.append(m.groups(0)[0])
+    for run_id in ids_in_order:
         meas = time_measurement(run_id, run_ids[run_id], config=config)
         html_rows.append(meas.rowhtml(fields=fields))
         csv_rows.append(meas.rowcsv(fields=csv_fields))
