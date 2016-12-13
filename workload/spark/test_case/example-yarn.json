@@ -32,11 +32,11 @@
         "TAG" : "q1_exec1_vcore2",
         "CMD" : {
             "COMMAND" : "<SPARK_HOME>/bin/run-example",
+            "EXECUTOR_PER_DN" : 1,
+            "EXECUTOR_VCORES" : 2,
+            "EXECUTOR_MEM" : "1g",
+            "DRIVER_MEM" : "1g",
             "PARAM" : [
-                "--master yarn",
-                "--num-executors 1",
-                "--executor-cores 2",
-                "--executor-memory 1g",
                 {
                     "--conf" : [
                         "spark.executor.extraJavaOptions=\\\"-XX:ParallelGCThreads=4 -XX:+AlwaysTenure\\\""
@@ -56,11 +56,11 @@
         "TAG" : "q1_exec2_vcore1",
         "CMD" : {
             "COMMAND" : "<SPARK_HOME>/bin/run-example",
+            "EXECUTOR_PER_DN" : 2,
+            "EXECUTOR_VCORES" : 1,
+            "EXECUTOR_MEM" : "1g",
+            "DRIVER_MEM" : "1g",
             "PARAM" : [
-                "--master yarn",
-                "--num-executors 2",
-                "--executor-cores 1",
-                "--executor-memory 1g",
                 {
                     "--conf" : [
                         "spark.executor.extraJavaOptions=\\\"-XX:ParallelGCThreads=2 -XX:+AlwaysTenure\\\""

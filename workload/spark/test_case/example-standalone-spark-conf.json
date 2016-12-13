@@ -1,7 +1,7 @@
 {
     "SPARK_HOME" : "/root/spark-2.0.2",
     "HADOOP_HOME" : "/root/hadoop-2.7.1",
-    "MASTER" : "rhel72-1",
+    "MASTER" : "rhel1",
     "SCHEDULER" : "STANDALONE",
     "SPARK_DEFAULTS" : {
         "spark.eventLog.enabled" : "true",

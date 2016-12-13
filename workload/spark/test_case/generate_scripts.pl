@@ -345,80 +345,51 @@ EOF
         if (exists $step->{"REPEAT"}) {
             $repeat = $step->{"REPEAT"};
         }
-        my $drop_cache_between_run = 0;
-        if ((exists $step->{"DROP_CACHE_BETWEEN_REPEAT"}) and ($step->{"DROP_CACHE_BETWEEN_REPEAT"} eq "TRUE")) {
-            $drop_cache_between_run = 1;
+        # Default do drop cache between runs
+        my $drop_cache_between_run = 1;
+        if ((exists $step->{"DROP_CACHE_BETWEEN_REPEAT"}) and ($step->{"DROP_CACHE_BETWEEN_REPEAT"} eq "FALSE")) {
+            $drop_cache_between_run = 0;
         }
+        if (not ((exists $step->{"CMD"}->{"EXECUTOR_PER_DN"}) and (exists $step->{"CMD"}->{"EXECUTOR_VCORES"}))) {
+            close $script_fh;
+            `rm -rf $script_dir_full`;
+            die "TAG ".$step->{"TAG"}." please configure EXECUTOR_PER_DN/EXECUTOR_VCORES in CMD section";
+        }
+        $def_worker_instances = $step->{"CMD"}->{"EXECUTOR_PER_DN"};
+        $def_worker_cores = $step->{"CMD"}->{"EXECUTOR_VCORES"};
         if (($is_power == 1) and ($change_smt == 1)) {
             my $set_smt = 0;
             if (exists $step->{"SMT"}) {
                 $smt_changed = 1;
                 $smt_reset = 1;
                 $set_smt = $step->{"SMT"};
-            }
-            if ($spark_conf->{"SCHEDULER"} eq "YARN") {
-                # Calculate SMT setting if there is "--num-executors" and "--executor-cores" configured in CMD parameter
-                if (exists $step->{"CMD"}->{"PARAM"}) {
-                    my $def_num_executors = 0;
-                    my $def_executor_cores = 0;
-                    foreach my $element (@{$step->{"CMD"}->{"PARAM"}}) {
-                        if ($element =~ /--num-executors\s+([0-9]+)/) {
-                            $def_num_executors = $1;
-                        }
-                        if ($element =~ /--executor-cores\s+([0-9]+)/) {
-                            $def_executor_cores = $1;
-                        }
-                    }
-                    if (($def_num_executors > 0) and ($def_executor_cores > 0)) {
-                        $smt_changed = 1;
-                        $smt_reset = 1;
-                        my $total_cores_required = $def_num_executors * $def_executor_cores;
-                        my $smt_ratio = ($total_cores_required * 1.0)/($total_cores_online * 1.0);
-                        if ($smt_ratio <= 1.0) {
-                            $set_smt = 1;
-                        } elsif ($smt_ratio <= 2.0) {
-                            $set_smt = 2;
-                        } elsif ($smt_ratio <= 4.0) {
-                            $set_smt = 4;
-                        } elsif ($smt_ratio <= 8.0) {
-                            $set_smt = 8;
-                        } else {
-                            close $script_fh;
-                            `rm -rf $script_dir_full`;
-                            die "TAG ".$step->{"TAG"}." --num-executors X --executor-cores exceed available cores in all slaves";
-                        }
-                    }
-                }
             } else {
-                # Calculate SMT setting if there is "SPARK_WORKER_INSTANCES" and "SPARK_WORKER_CORES" configured in ENV section
-                if (exists $step->{"ENV"}) {
-                    foreach my $element (@{$step->{"ENV"}}) {
-                        if ($element =~ /SPARK_WORKER_INSTANCES=([0-9]+)/) {
-                            $def_worker_instances = $1;
-                        }
-                        if ($element =~ /SPARK_WORKER_CORES=([0-9]+)/) {
-                            $def_worker_cores = $1;
-                        }
-                    }
-                    if (($def_worker_instances > 0) and ($def_worker_cores > 0)) {
-                        $smt_changed = 1;
-                        $smt_reset = 1;
-                        my $node_cores_required = $def_worker_instances * $def_worker_cores;
-                        my $smt_ratio = ($node_cores_required * 1.0)/($cores * 1.0);
-                        if ($smt_ratio <= 1.0) {
-                            $set_smt = 1;
-                        } elsif ($smt_ratio <= 2.0) {
-                            $set_smt = 2;
-                        } elsif ($smt_ratio <= 4.0) {
-                            $set_smt = 4;
-                        } elsif ($smt_ratio <= 8.0) {
-                            $set_smt = 8;
-                        } else {
-                            close $script_fh;
-                            `rm -rf $script_dir_full`;
-                            die "TAG ".$step->{"TAG"}." SPARK_WORKER_INSTANCES X SPARK_WORKER_CORES exceed available cores in all slaves";
-                        }
-                    }
+                $smt_changed = 1;
+                $smt_reset = 1;
+
+                # For YARN, we need to add additional core for Application Master
+                if ($spark_conf->{"SCHEDULER"} eq "YARN") {
+                    $def_worker_cores = $def_worker_cores + 1;
+                }
+                my $node_cores_required = $def_worker_instances * $def_worker_cores;
+                my $smt_ratio = ($node_cores_required * 1.0)/($cores * 1.0);
+                if ($smt_ratio <= 1.0) {
+                    $set_smt = 1;
+                } elsif ($smt_ratio <= 2.0) {
+                    $set_smt = 2;
+                } elsif ($smt_ratio <= 4.0) {
+                    $set_smt = 4;
+                } elsif ($smt_ratio <= 8.0) {
+                    $set_smt = 8;
+                } else {
+                    close $script_fh;
+                    `rm -rf $script_dir_full`;
+                    die "TAG ".$step->{"TAG"}." EXECUTOR_PER_DN(".$def_worker_instances.") X EXECUTOR_VCORES(".$def_worker_cores.") exceed available cores in all slaves";
+                }
+
+                # For YARN, we need to restore the original core config
+                if ($spark_conf->{"SCHEDULER"} eq "YARN") {
+                    $def_worker_cores = $def_worker_cores - 1;
                 }
             }
             print $script_fh <<EOF;
@@ -431,28 +402,19 @@ SMT_NEED_RESET=1
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=$set_smt"
 EOF
             }
-        } else {
-            if (exists $step->{"ENV"}) {
-                foreach my $element (@{$step->{"ENV"}}) {
-                    if ($element =~ /SPARK_WORKER_INSTANCES=([0-9]+)/) {
-                        $def_worker_instances = $1;
-                    }
-                    if ($element =~ /SPARK_WORKER_CORES=([0-9]+)/) {
-                        $def_worker_cores = $1;
-                    }
-                }
-            }
         }
 
         # For standalone mode, need to update spark-env.sh with ENV, then restart master/slaves
-        if (($spark_conf->{"SCHEDULER"} eq "STANDALONE") and (exists $step->{"ENV"}) and (($last_worker_instances != $def_worker_instances) or ($last_worker_cores != $def_worker_cores))) {
+        if (($spark_conf->{"SCHEDULER"} eq "STANDALONE") and (($last_worker_instances != $def_worker_instances) or ($last_worker_cores != $def_worker_cores))) {
             print $script_fh <<EOF;
 $spark_conf->{"SPARK_HOME"}/sbin/stop-all.sh
 \\cp \$RUNDIR/.spark-env.sh.backup.master $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+echo "export SPARK_WORKER_INSTANCES=$def_worker_instances" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+echo "export SPARK_WORKER_CORES=$def_worker_cores" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 EOF
-            foreach my $element (@{$step->{"ENV"}}) {
+            if (exists $step->{"CMD"}->{"EXECUTOR_MEM"}) {
                 print $script_fh <<EOF;
-echo "export $element" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
+echo "export SPARK_WORKER_MEMORY=$step->{"CMD"}->{"EXECUTOR_MEM"}" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 EOF
             }
             print $script_fh <<EOF;
@@ -460,10 +422,12 @@ echo "export SPARK_MASTER_IP=$master_ip" >> $spark_conf->{"SPARK_HOME"}/conf/spa
 for SLAVE in \$SLAVES
 do
     \\cp \$RUNDIR/.spark-env.sh.backup.\$SLAVE /tmp/spark-env.sh.backup.\$SLAVE
+    echo "export SPARK_WORKER_INSTANCES=$def_worker_instances" >> /tmp/spark-env.sh.backup.\$SLAVE
+    echo "export SPARK_WORKER_CORES=$def_worker_cores" >> /tmp/spark-env.sh.backup.\$SLAVE
 EOF
-            foreach my $element (@{$step->{"ENV"}}) {
+            if (exists $step->{"CMD"}->{"EXECUTOR_MEM"}) {
                 print $script_fh <<EOF;
-    echo "export $element" >> /tmp/spark-env.sh.backup.\$SLAVE
+    echo "export SPARK_WORKER_MEMORY=$step->{"CMD"}->{"EXECUTOR_MEM"}" >> /tmp/spark-env.sh.backup.\$SLAVE
 EOF
             }
             print $script_fh <<EOF;
@@ -483,6 +447,26 @@ CMD_TO_KILL="$step->{"CMD"}->{"COMMAND"}"
 EOF
         $cmd = $cmd.$step->{"CMD"}->{"COMMAND"};
         my $def_conf = 0;
+        if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
+            $cmd = $cmd." --master spark://$master_ip:7077";
+            if (exists $step->{"CMD"}->{"EXECUTOR_MEM"}) {
+                $cmd = $cmd." --conf spark.executor.memory=".$step->{"CMD"}->{"EXECUTOR_MEM"};
+            }
+            if (exists $step->{"CMD"}->{"DRIVER_MEM"}) {
+                $cmd = $cmd." --conf spark.driver.memory=".$step->{"CMD"}->{"DRIVER_MEM"};
+            }
+        } else {
+            $cmd = $cmd." --master yarn";
+            my $total_executors = $slave_count * $def_worker_instances;
+            $cmd = $cmd." --num-executors $total_executors";
+            $cmd = $cmd." --executor-cores $def_worker_cores";
+            if (exists $step->{"CMD"}->{"EXECUTOR_MEM"}) {
+                $cmd = $cmd." --executor-memory ".$step->{"CMD"}->{"EXECUTOR_MEM"};
+            }
+            if (exists $step->{"CMD"}->{"DRIVER_MEM"}) {
+                $cmd = $cmd." --driver-memory ".$step->{"CMD"}->{"DRIVER_MEM"};
+            }
+        }
         if (exists $step->{"CMD"}->{"PARAM"}) {
             foreach my $element (@{$step->{"CMD"}->{"PARAM"}}) {
                 if (ref($element) eq "HASH") {
