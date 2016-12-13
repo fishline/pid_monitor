@@ -69,7 +69,7 @@ class TimeMeasurement(measurement.Measurement):
             event_log_fn = subprocess.check_output("ls " + run_dir + "/spark_events/*" + run_id + "-ITER* | head -n 1 | awk -F/ '{print $NF}' | awk -F\"-" + run_id + "-ITER\" '{print $1}'", shell=True)
             if subprocess.call("ps -ef | grep java | grep -i historyserver | grep -v org.apache.hadoop.mapreduce.v2.hs.JobHistoryServer | awk '{print $2}' | xargs -i sh -c \"netstat -nap | grep {}\" | grep LISTEN | awk '{print $4}' | awk -F: '{print $NF}'", shell=True) == 0:
                 port = subprocess.check_output("ps -ef | grep java | grep -i historyserver | grep -v org.apache.hadoop.mapreduce.v2.hs.JobHistoryServer | awk '{print $2}' | xargs -i sh -c \"netstat -nap | grep {}\" | grep LISTEN | awk '{print $4}' | awk -F: '{print $NF}'", shell=True)
-                if subprocess.call("ip route show | grep ^default | awk '{print $5}' | xargs -i ifconfig {} | grep netmask | awk '{print $2}'", shell=True) == 0:
+                if subprocess.call("ip route show | grep ^default | awk '{print $5}' | xargs -i ifconfig {} | grep netmask > /dev/null 2>&1", shell=True) == 0:
                     ip = subprocess.check_output("ip route show | grep ^default | awk '{print $5}' | xargs -i ifconfig {} | grep netmask | awk '{print $2}'", shell=True)
                     self.spark_event_log = "<a href=\"http://" + ip + ":" + port + "/history/" + event_log_fn  + "\">" + event_log_fn + "</a>"
         else:
