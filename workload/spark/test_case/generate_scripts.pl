@@ -243,6 +243,8 @@ export WORKLOAD_DIR="."      # The workload working directory
 export MEAS_DELAY_SEC=1      # Delay between each measurement
 export RUNDIR=\$(\${PMH}/setup-run.sh \$WORKLOAD_NAME)
 mkdir \$RUNDIR/spark_events
+INFO=\$PMH/workload/spark/test_case/$script_dir/info
+rm -f \$INFO
 
 # SLAVES config required by run-workload.sh
 unset SLAVES
@@ -510,6 +512,7 @@ EOF
         }
         if ($repeat == 1) {
             print $script_fh <<EOF;
+echo \"TAG:$step->{"TAG"} COUNT:1\" >> \$INFO
 export RUN_ID=\"$step->{"TAG"}-ITER0\"
 CMD=\"${cmd}\"
 CMD=\"\${CMD} > \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log 2>&1\"
@@ -520,6 +523,8 @@ if [ \$? -eq 0 ]
 then
     TGT_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk -F"file:" '{print \$2}'`;
     DST_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
+    echo \"TAG:$step->{"TAG"} ITER:1 APPID:\$DST_EVENT_LOG_FN\" >> \$INFO
+    echo \"TAG:$step->{"TAG"} ITER:1 EVENTLOG:\$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0\" >> \$INFO
     for SLAVE in \$SLAVES
     do
         scp \$SLAVE:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
@@ -561,6 +566,7 @@ EOF
             }
         } else {
             print $script_fh <<EOF;
+echo \"TAG:$step->{"TAG"} COUNT:$repeat\" >> \$INFO
 for ITER in \$(seq $repeat)
 do
 EOF
@@ -584,6 +590,8 @@ EOF
     then
         TGT_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk -F"file:" '{print \$2}'`;
         DST_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
+        echo \"TAG:$step->{"TAG"} ITER:\$ITER APPID:\$DST_EVENT_LOG_FN\" >> \$INFO
+        echo \"TAG:$step->{"TAG"} ITER:\$ITER EVENTLOG:\$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER\" >> \$INFO
         for SLAVE in \$SLAVES
         do
             scp \$SLAVE:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
