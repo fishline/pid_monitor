@@ -217,11 +217,6 @@ if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
             scp \$RUNDIR/.spark-env.sh.backup.\$SLAVE \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
         done
 EOF
-} else {
-    print $script_fh <<EOF;
-        # Shutdown yarn scheduler finally
-        $spark_conf->{"HADOOP_HOME"}/sbin/stop-yarn.sh
-EOF
 }
 
 print $script_fh <<EOF;
@@ -532,7 +527,6 @@ EOF
     export WORKLOAD_CMD=\${CMD}
 EOF
         # For YARN scheduler, get the latest FINISHED/FAILED/KILLED application-id
-        # FIXME: double check the last one in the list is the latest one
         if ($spark_conf->{"SCHEDULER"} eq "YARN") {
             print $script_fh <<EOF;
     # Get existing application-id infos
@@ -545,10 +539,6 @@ EOF
     FINISHED_ID=`\$PMH/workload/spark/scripts/query_last_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} FINISHED`;
     FAILED_ID=`\$PMH/workload/spark/scripts/query_last_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} FAILED`;
     KILLED_ID=`\$PMH/workload/spark/scripts/query_last_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} KILLED`;
-    # FIXME: debug
-    echo \$FINISHED_ID
-    echo \$FAILED_ID
-    echo \$KILLED_ID
     \$PMH/workload/spark/scripts/query_yarn_app_id.pl \$FINISHED_ID \$FAILED_ID \$KILLED_ID \$INFO $step->{"TAG"} \$ITER $spark_conf->{"HADOOP_HOME"} \$PMH/workload/spark/scripts &
 EOF
         }
@@ -681,12 +671,6 @@ for SLAVE in \$SLAVES
 do
     scp \$RUNDIR/.spark-env.sh.backup.\$SLAVE \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
 done
-
-EOF
-} else {
-    print $script_fh <<EOF;
-# Shutdown yarn scheduler finally
-$spark_conf->{"HADOOP_HOME"}/sbin/stop-yarn.sh
 
 EOF
 }
