@@ -510,81 +510,53 @@ EOF
                 $current_spark_event_dir = $default_spark_event_dir;
             }
         }
-        if ($repeat == 1) {
-            print $script_fh <<EOF;
-echo \"TAG:$step->{"TAG"} COUNT:1\" >> \$INFO
-export RUN_ID=\"$step->{"TAG"}-ITER0\"
-CMD=\"${cmd}\"
-CMD=\"\${CMD} > \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log 2>&1\"
-export WORKLOAD_CMD=\${CMD}
-\${PMH}/run-workload.sh
-grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log > /dev/null 2>&1
-if [ \$? -eq 0 ]
-then
-    TGT_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk -F"file:" '{print \$2}'`;
-    DST_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
-    echo \"TAG:$step->{"TAG"} ITER:1 APPID:\$DST_EVENT_LOG_FN\" >> \$INFO
-    echo \"TAG:$step->{"TAG"} ITER:1 EVENTLOG:\$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0\" >> \$INFO
-    for SLAVE in \$SLAVES
-    do
-        scp \$SLAVE:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
-    done
-    scp $spark_conf->{"MASTER"}:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
-else
-EOF
-            print $script_fh <<EOF;
-    grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log > /dev/null 2>&1
-    if [ \$? -eq 0 ]
-    then
-        DST_EVENT_LOG_FN=`grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER0.log | awk '{print \$NF}'`;
-        for SLAVE in \$SLAVES
-        do
-            scp \$SLAVE:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
-        done
-        scp $spark_conf->{"MASTER"}:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER0 > /dev/null 2>&1
-    else
-        echo "Cannot find app-ID, maybe running in standalone mode and disabled app INFO console log?"
-    fi
-fi
-EOF
-            if (exists $step->{"AFTER"}) {
-                if ($step->{"AFTER"} =~ /\<HADOOP_HOME\>/) {
-                    $step->{"AFTER"} =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
-                }
-                if ($step->{"AFTER"} =~ /\<SPARK_HOME\>/) {
-                    $step->{"AFTER"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
-                }
-                print $script_fh <<EOF;
-# AFTER command
-$step->{"AFTER"}
 
-EOF
-            } else {
-                print $script_fh <<EOF;
-
-EOF
-            }
-        } else {
-            print $script_fh <<EOF;
+        print $script_fh <<EOF;
 echo \"TAG:$step->{"TAG"} COUNT:$repeat\" >> \$INFO
 for ITER in \$(seq $repeat)
 do
 EOF
-            if ($drop_cache_between_run == 1) {
-                print $script_fh <<EOF;
+        if ($drop_cache_between_run == 1) {
+            print $script_fh <<EOF;
     if [ \$ITER -ne 1 ] 
     then
         sync && echo 3 > /proc/sys/vm/drop_caches
         grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "sync && echo 3 > /proc/sys/vm/drop_caches"
     fi
 EOF
-            }
-            print $script_fh <<EOF;
+        }
+        print $script_fh <<EOF;
     export RUN_ID=\"$step->{"TAG"}-ITER\$ITER\"
     CMD=\"${cmd}\"
     CMD=\"\${CMD} > \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log 2>&1\"
     export WORKLOAD_CMD=\${CMD}
+EOF
+        # For YARN scheduler, get the latest FINISHED/FAILED/KILLED application-id
+        # FIXME: double check the last one in the list is the latest one
+        if ($spark_conf->{"SCHEDULER"} eq "YARN") {
+            print $script_fh <<EOF;
+    # Get existing application-id infos
+    $spark_conf->{"HADOOP_HOME"}/bin/yarn application -appStates RUNNING -list 2>&1 | tail -n 1 | grep -v Application-Id > /dev/null 2>&1
+    if [ \$? -eq 0 ]
+    then
+        echo "There should be no running task at this momenet, please check and run again!"
+        exit 1
+    fi
+    FINISHED_ID=`\$PMH/workload/spark/scripts/query_last_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} FINISHED`;
+    FAILED_ID=`\$PMH/workload/spark/scripts/query_last_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} FAILED`;
+    KILLED_ID=`\$PMH/workload/spark/scripts/query_last_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} KILLED`;
+    # FIXME: debug
+    echo \$FINISHED_ID
+    echo \$FAILED_ID
+    echo \$KILLED_ID
+    \$PMH/workload/spark/scripts/query_yarn_app_id.pl \$FINISHED_ID \$FAILED_ID \$KILLED_ID \$INFO $step->{"TAG"} \$ITER $spark_conf->{"HADOOP_HOME"} \$PMH/workload/spark/scripts &
+EOF
+        }
+        print $script_fh <<EOF;
     \${PMH}/run-workload.sh
+EOF
+        if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
+            print $script_fh <<EOF;
     grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log > /dev/null 2>&1
     if [ \$? -eq 0 ]
     then
@@ -598,8 +570,6 @@ EOF
         done
         scp $spark_conf->{"MASTER"}:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
     else
-EOF
-            print $script_fh <<EOF;
         grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log > /dev/null 2>&1
         if [ \$? -eq 0 ]
         then
@@ -609,30 +579,62 @@ EOF
                 scp \$SLAVE:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
             done
             scp $spark_conf->{"MASTER"}:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
+            echo \"TAG:$step->{"TAG"} ITER:\$ITER APPID:\$DST_EVENT_LOG_FN\" >> \$INFO
+            echo \"TAG:$step->{"TAG"} ITER:\$ITER EVENTLOG:\$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER\" >> \$INFO
         else
             echo "Cannot find app-ID, maybe running in standalone mode and disabled app INFO console log?"
         fi
     fi
 EOF
-            if (exists $step->{"AFTER"}) {
-                if ($step->{"AFTER"} =~ /\<HADOOP_HOME\>/) {
-                    $step->{"AFTER"} =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
-                }
-                if ($step->{"AFTER"} =~ /\<SPARK_HOME\>/) {
-                    $step->{"AFTER"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
-                }
-                print $script_fh <<EOF;
+        } else {
+            print $script_fh <<EOF;
+    grep "TAG:$step->{"TAG"} ITER:\$ITER APPID:" \$INFO > /dev/null 2>&1
+    while [ \$? -ne 0 ]
+    do
+        sleep 1
+        grep "TAG:$step->{"TAG"} ITER:\$ITER APPID:" \$INFO > /dev/null 2>&1
+    done
+    grep "TAG:$step->{"TAG"} ITER:\$ITER APPID:TIMEOUT" \$INFO > /dev/null 2>&1
+    if [ \$? -ne 0 ]
+    then
+        DST_EVENT_LOG_FN=`grep "TAG:$step->{"TAG"} ITER:\$ITER APPID:" \$INFO | awk -F\"APPID:\" '{print \$2}'`;
+        for SLAVE in \$SLAVES
+        do
+            scp \$SLAVE:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
+        done
+        scp $spark_conf->{"MASTER"}:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER > /dev/null 2>&1
+        echo \"TAG:$step->{"TAG"} ITER:\$ITER EVENTLOG:\$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER\" >> \$INFO
+        $spark_conf->{"HADOOP_HOME"}/bin/yarn application -appStates FINISHED -list 2>&1 | grep \$DST_EVENT_LOG_FN > /dev/null 2>&1
+        if [ \$? -eq 0 ]
+        then
+            echo \"TAG:$step->{"TAG"} ITER:\$ITER STATUS:0\" >> \$INFO
+        else
+            echo \"TAG:$step->{"TAG"} ITER:\$ITER STATUS:1\" >> \$INFO
+        fi
+        # FIXME: put time result into INFO
+    else
+        echo "Application ID not found for TAG:$step->{"TAG"} ITER:\$ITER"
+    fi
+EOF
+        }
+        if (exists $step->{"AFTER"}) {
+            if ($step->{"AFTER"} =~ /\<HADOOP_HOME\>/) {
+                $step->{"AFTER"} =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
+            }
+            if ($step->{"AFTER"} =~ /\<SPARK_HOME\>/) {
+                $step->{"AFTER"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
+            }
+            print $script_fh <<EOF;
     # AFTER command
     $step->{"AFTER"}
 done
 
 EOF
-            } else {
-                print $script_fh <<EOF;
+        } else {
+            print $script_fh <<EOF;
 done
 
 EOF
-            }
         }
         $last_worker_instances = $def_worker_instances;
         $last_worker_cores = $def_worker_cores;
