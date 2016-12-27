@@ -539,12 +539,6 @@ EOF
         if ($spark_conf->{"SCHEDULER"} eq "YARN") {
             print $script_fh <<EOF;
     # Get existing application-id infos
-    $spark_conf->{"HADOOP_HOME"}/bin/yarn application -appStates RUNNING -list 2>&1 | tail -n 1 | grep -v Application-Id > /dev/null 2>&1
-    if [ \$? -eq 0 ]
-    then
-        echo "There should be no running task at this momenet, please check and run again!"
-        exit 1
-    fi
     echo "FINISHED" > \$APPID
     `\$PMH/workload/spark/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} FINISHED \$DEBUG >> \$APPID`;
     echo "FAILED" >> \$APPID
