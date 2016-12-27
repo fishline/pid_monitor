@@ -3,30 +3,18 @@
         "USE" : "example-yarn-spark-conf.json"
     },
     {
-        "ACTION" : "CLEAR_SWAPPINESS"
-    },
-    {
-        "ACTION" : "HDFS",
-        "PARAM" : "STOP"
-    },
-    {
-        "ACTION" : "YARN",
-        "PARAM" : "STOP"
-    },
-    {
-        "ACTION" : "DROP_CACHE"
-    },
-    {
-        "ACTION" : "HDFS",
-        "PARAM" : "START"
-    },
-    {
-        "ACTION" : "YARN",
-        "PARAM" : "START"
-    },
-    {
-        "ACTION" : "WAIT",
-        "PARAM" : 20
+        "SUMMARY" : {
+            "median_sec" : [
+                "<PMH>/workload/spark/scripts/spark_event_log_median_sec.pl",
+                "<INFO>",
+                "<TAG>"
+            ],
+            "spark_event_log" : [
+                "<PMH>/workload/spark/scripts/spark_event_log_web_link.pl",
+                "<INFO>",
+                "<TAG>"
+            ]
+        }
     },
     {
         "TAG" : "q1_exec1_vcore2",

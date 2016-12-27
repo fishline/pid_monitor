@@ -16,6 +16,7 @@ if ($? == 0) {
 }
 
 my $test_plan_fn = $ARGV[0];
+my %tags = ();
 ########## Load JSON definition from above two files ############
 my $scenario_text = do {
     open(my $json_fh, "<:encoding(UTF-8)", $test_plan_fn) or die "Cannot open $test_plan_fn for read!";
@@ -203,7 +204,7 @@ EOF
 }
 
 print $script_fh <<EOF;
-        \$PMH/create_summary_table.py \$RUNDIR/html/config.json > \$RUNDIR/html/summary.html
+        \$PMH/workload/spark/scripts/create_summary_table.pl \$PMH/workload/spark/test_case/$test_plan_fn \$RUNDIR
 
 EOF
 
@@ -239,6 +240,8 @@ export MEAS_DELAY_SEC=1      # Delay between each measurement
 export RUNDIR=\$(\${PMH}/setup-run.sh \$WORKLOAD_NAME)
 mkdir \$RUNDIR/spark_events
 INFO=\$PMH/workload/spark/test_case/$script_dir/info
+APPID=\$PMH/workload/spark/test_case/$script_dir/appid
+DEBUG=\$PMH/workload/spark/test_case/$script_dir/debug.log
 rm -f \$INFO
 
 # SLAVES config required by run-workload.sh
@@ -333,6 +336,12 @@ EOF
         my $current_spark_event_dir = "";
         my $smt_changed = 0;
         my $tag_idx = 0;
+        if (exists $tags{$step->{"TAG"}}) {
+            $tags{$step->{"TAG"}} = $tags{$step->{"TAG"}} + 1;
+            $step->{"TAG"} = $step->{"TAG"}."_".$tags{$step->{"TAG"}};
+        } else {
+            $tags{$step->{"TAG"}} = 1;
+        }
         if (not (exists $step->{"CMD"})) {
             close $script_fh;
             `rm -rf $script_dir_full`;
@@ -536,14 +545,19 @@ EOF
         echo "There should be no running task at this momenet, please check and run again!"
         exit 1
     fi
-    FINISHED_ID=`\$PMH/workload/spark/scripts/query_last_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} FINISHED`;
-    FAILED_ID=`\$PMH/workload/spark/scripts/query_last_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} FAILED`;
-    KILLED_ID=`\$PMH/workload/spark/scripts/query_last_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} KILLED`;
-    \$PMH/workload/spark/scripts/query_yarn_app_id.pl \$FINISHED_ID \$FAILED_ID \$KILLED_ID \$INFO $step->{"TAG"} \$ITER $spark_conf->{"HADOOP_HOME"} \$PMH/workload/spark/scripts &
+    echo "FINISHED" > \$APPID
+    `\$PMH/workload/spark/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} FINISHED \$DEBUG >> \$APPID`;
+    echo "FAILED" >> \$APPID
+    `\$PMH/workload/spark/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} FAILED \$DEBUG >> \$APPID`;
+    echo "KILLED" >> \$APPID
+    `\$PMH/workload/spark/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} KILLED \$DEBUG >> \$APPID`;
+    \$PMH/workload/spark/scripts/query_yarn_app_id.pl \$APPID \$INFO $step->{"TAG"} \$ITER $spark_conf->{"HADOOP_HOME"} \$PMH/workload/spark/scripts \$DEBUG &
 EOF
         }
         print $script_fh <<EOF;
     \${PMH}/run-workload.sh
+    DURATION=`grep "Elapsed (wall clock) time" \$RUNDIR/data/raw/$step->{"TAG"}-ITER\${ITER}_time_stdout.txt | awk -F"m:ss): " '{print \$2}' | awk -F: 'END { if (NF == 2) {sum=\$1*60+\$2} else {sum=\$1*3600+\$2*60+\$3} print sum}'`
+    echo \"TAG:$step->{"TAG"} ITER:\$ITER DURATION:\$DURATION\" >> \$INFO
 EOF
         if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
             print $script_fh <<EOF;
@@ -572,7 +586,7 @@ EOF
             echo \"TAG:$step->{"TAG"} ITER:\$ITER APPID:\$DST_EVENT_LOG_FN\" >> \$INFO
             echo \"TAG:$step->{"TAG"} ITER:\$ITER EVENTLOG:\$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$step->{"TAG"}-ITER\$ITER\" >> \$INFO
         else
-            echo "Cannot find app-ID, maybe running in standalone mode and disabled app INFO console log?"
+            echo "Cannot find app-ID, please enable console INFO log level when using STANDALONE scheduler!"
         fi
     fi
 EOF
@@ -658,7 +672,7 @@ EOF
 }
 
 print $script_fh <<EOF;
-\$PMH/create_summary_table.py \$RUNDIR/html/config.json > \$RUNDIR/html/summary.html
+\$PMH/workload/spark/scripts/create_summary_table.pl \$PMH/workload/spark/test_case/$test_plan_fn \$RUNDIR
 
 EOF
 

@@ -67,8 +67,6 @@ def create_table(config_fn):
         html_rows.append(meas.rowhtml(fields=fields))
         csv_rows.append(meas.rowcsv(fields=csv_fields))
     table = html_table(fields, html_rows)
-    #with open('summary.html', 'w') as fid:
-    #    fid.write(table)
     sys.stdout.write(table)
     header = meas.headercsv(fields=csv_fields)
     table = csv_table(header, csv_rows)
@@ -102,19 +100,6 @@ def time_measurement(run_id, run_count, config=None):
     meas.parse(time_fn, run_id, run_count)
     meas.addfield('run_id', run_id)
 
-    #time_ref = '<a href="%s">time</a>' % time_fn if os.path.isfile(
-    #    time_fn) else ''
-    #meas.addfield('time', time_ref)
-
-    #stdout_fn = os.path.join(data_dir, run_id + config['stdout_ext'])
-    #stdout_ref = '<a href="%s">stdout</a>' % stdout_fn if os.path.isfile(
-    #    stdout_fn) else ''
-    #meas.addfield('stdout', stdout_ref)
-
-    #stderr_fn = os.path.join(data_dir, run_id + config['stderr_ext'])
-    #stderr_ref = '<a href="%s">stderr</a>' % stderr_fn if os.path.isfile(
-    #    stderr_fn) else ''
-    #meas.addfield('stderr', stderr_ref)
     return meas
 
 if __name__ == '__main__':
