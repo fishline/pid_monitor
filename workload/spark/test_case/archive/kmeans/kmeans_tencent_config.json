@@ -1,0 +1,40 @@
+[
+    {
+        "USE" : "conf.json"
+    },
+    {
+        "SUMMARY" : {
+            "median_sec" : [
+                "<PMH>/workload/spark/scripts/spark_event_log_median_sec.pl",
+                "<INFO>",
+                "<TAG>"
+            ]
+        }
+    },
+    {
+        "ACTION" : "DROP_CACHE"
+    },
+    {
+        "TAG" : "CMS_Tencent_config",
+        "CMD" : {
+            "COMMAND" : "<SPARK_HOME>/bin/spark-submit",
+            "EXECUTOR_PER_DN" : 100,
+            "EXECUTOR_VCORES" : 4,
+            "EXECUTOR_MEM" : "16g",
+            "DRIVER_MEM" : "8g",
+            "PARAM" : [
+                {
+                    "--conf" : [
+                        "spark.executor.extraJavaOptions=\\\"-Dcom.sun.management.jmxremote -verbose:gc -XX:-PrintGCDetails -XX:+PrintGCDateStamps -Xloggc:/tmp/gc.log -XX:MaxPermSize=256m -server -XX:+UseMembar -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:+CMSScavengeBeforeRemark -XX:ParallelCMSThreads=4 -XX:SurvivorRatio=4 -XX:+UseCMSCompactAtFullCollection -XX:+CMSClassUnloadingEnabled -XX:CMSInitiatingOccupancyFraction=60 -XX:+CMSClassUnloadingEnabled\\\""
+                    ]
+                },
+                "--queue root.spark",
+                "--class KmeansApp",
+                "/home/felix/SparkBench_working_sql/spark_app/kmeans/target/scala-2.10/kmeans-app_2.10-1.0.jar",
+                "hdfs://10.10.10.10/Kmeans/SparkBench_160G hdfs://10.10.10.10/Kmeans/SparkBench_80G_output 2 10 500 1 random"
+            ]
+        },
+        "REPEAT" : 1,
+        "DROP_CACHE_BETWEEN_REPEAT" : "FALSE"
+    }
+]

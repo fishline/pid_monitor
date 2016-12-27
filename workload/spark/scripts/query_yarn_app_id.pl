@@ -24,6 +24,7 @@ if ($#ARGV > 5) {
 my %failed = ();
 my %killed = ();
 my %finished = ();
+my %running = ();
 my $ref;
 open APP_FN, "< $appid_fn" or die "Cannot open $appid_fn for read!";
 while (<APP_FN>) {
@@ -35,6 +36,8 @@ while (<APP_FN>) {
         $ref = \%failed;
     } elsif ($line =~ /KILLED/) {
         $ref = \%killed;
+    } elsif ($line =~ /RUNNING/) {
+        $ref = \%running;
     } elsif ($line ne "NONE") {
         $ref->{$line} = 1;
     }
@@ -43,17 +46,27 @@ close APP_FN;
 
 my $str = "";
 while (1) {
-    $app_id = `$script_path/query_yarn_app_id_in_some_state.pl $hadoop_home RUNNING`;
-    if ($app_id ne "NONE\n") {
-        chomp($app_id);
-        if (($debug_fn ne "") and ($app_id =~ /\s+/)) {
-            open DEBUG, ">> $debug_fn" or die "Cannot open file $debug_fn for append";
-            print DEBUG "query_yarn_app_id.pl $appid_fn $info_fn $tag $iter $hadoop_home $script_path\n";
-            print DEBUG "Found more than one running task:\n";
-            print DEBUG $app_id."\n\n";
-            close DEBUG;
+    $str = `$script_path/query_yarn_app_id_in_some_state.pl $hadoop_home RUNNING`;
+    if ($str ne "NONE\n") {
+        my @apps = split(/\n/, $str);
+        my $new = 0;
+        foreach my $id (@apps) {
+            chomp($id);
+            if (not exists $running{$id}) {
+                $new = $new + 1;
+                $app_id = $id;
+            }
         }
-        last;
+        if ($new > 0) {
+            if (($debug_fn ne "") and ($new > 1)) {
+                open DEBUG, ">> $debug_fn" or die "Cannot open file $debug_fn for append";
+                print DEBUG "query_yarn_app_id.pl $appid_fn $info_fn $tag $iter $hadoop_home $script_path\n";
+                print DEBUG "Found more than one new task in RUNNING:\n";
+                print DEBUG $str."\n\n";
+                close DEBUG;
+            }
+            last;
+        }
     }
     $str = `$script_path/query_yarn_app_id_in_some_state.pl $hadoop_home FINISHED`;
     if ($str ne "NONE\n") {

@@ -551,6 +551,8 @@ EOF
     `\$PMH/workload/spark/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} FAILED \$DEBUG >> \$APPID`;
     echo "KILLED" >> \$APPID
     `\$PMH/workload/spark/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} KILLED \$DEBUG >> \$APPID`;
+    echo "RUNNING" >> \$APPID
+    `\$PMH/workload/spark/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} RUNNING \$DEBUG >> \$APPID`;
     \$PMH/workload/spark/scripts/query_yarn_app_id.pl \$APPID \$INFO $step->{"TAG"} \$ITER $spark_conf->{"HADOOP_HOME"} \$PMH/workload/spark/scripts \$DEBUG &
 EOF
         }
