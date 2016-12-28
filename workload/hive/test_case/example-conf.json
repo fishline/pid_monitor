@@ -1,0 +1,5 @@
+{
+    "HIVE_HOME" : "/opt/apache-hive-1.2.1-bin",
+    "HADOOP_HOME" : "/home/hduser/hadoop",
+    "MASTER" : "master"
+}
