@@ -28,15 +28,17 @@ if ($? == 0) {
         if ($get_this_line == 1) {
             $get_this_line = 0;
             $line_interesting = $line;
-            if ($line_interesting =~ /([\s+]?)([^\s]+)\s+/) {
-                my $app_entry = $2;
-                $output = $output.$app_entry."\n";
-                if (($debug_fn ne "") and (not ($app_entry =~ /^app/))) {
-                    `echo "query_yarn_app_id_in_some_state.pl $hadoop_home $category got suspect result:" >> $debug_fn`;
-                    open DEBUG, ">> $debug_fn" or die "Cannot open file $debug_fn for append";
-                    print DEBUG $app_entry."\n";
-                    print DEBUG $info."\n\n";
-                    close DEBUG;
+            if ($line_interesting =~ /\s+SPARK\s+/) {
+                if ($line_interesting =~ /([\s+]?)([^\s]+)\s+/) {
+                    my $app_entry = $2;
+                    $output = $output.$app_entry."\n";
+                    if (($debug_fn ne "") and (not ($app_entry =~ /^app/))) {
+                        `echo "query_yarn_app_id_in_some_state.pl $hadoop_home $category got suspect result:" >> $debug_fn`;
+                        open DEBUG, ">> $debug_fn" or die "Cannot open file $debug_fn for append";
+                        print DEBUG $app_entry."\n";
+                        print DEBUG $info."\n\n";
+                        close DEBUG;
+                    }
                 }
             }
         }
