@@ -1,6 +1,6 @@
 {
-    "SPARK_HOME" : "/root/spark-2.0.2",
-    "HADOOP_HOME" : "/root/hadoop-2.7.1",
+    "SPARK_HOME" : "/root/spark-2.0.2-hadoop-2.2.0",
+    "HADOOP_HOME" : "/root/hadoop-2.2.0",
     "MASTER" : "rhel1",
     "SCHEDULER" : "YARN",
     "SPARK_DEFAULTS" : {
