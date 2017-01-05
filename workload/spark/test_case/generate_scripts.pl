@@ -588,6 +588,28 @@ EOF
 EOF
         } else {
             print $script_fh <<EOF;
+    APP_ID_FROM_LOG=""
+    grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log > /dev/null 2>&1
+    if [ \$? -eq 0 ]
+    then
+        APP_ID_FROM_LOG=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
+    else
+        grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log > /dev/null 2>&1
+        if [ \$? -eq 0 ]
+        then
+            APP_ID_FROM_LOG=`grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$step->{"TAG"}-ITER\$ITER.log | awk '{print \$NF}'`;
+        fi
+    fi
+
+    if [ \$APP_ID_FROM_LOG != "" ]
+    then
+        grep "TAG:$step->{"TAG"} ITER:\$ITER APPID:\$APP_ID_FROM_LOG" > /dev/null 2>&1
+        if [ \$? -ne 0 ]
+        then
+            sed -i "s/TAG:$step->{"TAG"} ITER:\$ITER APPID:.*\\\$/TAG:$step->{"TAG"} ITER:\$ITER APPID:\$APP_ID_FROM_LOG/g" \$INFO
+        fi
+    fi
+
     grep "TAG:$step->{"TAG"} ITER:\$ITER APPID:" \$INFO > /dev/null 2>&1
     while [ \$? -ne 0 ]
     do
