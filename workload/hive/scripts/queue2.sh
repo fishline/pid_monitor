@@ -15,3 +15,10 @@ hive --database tpcds_bin_partitioned_orc_1000 -f tpcds_hive_nowhere1_queue2.sql
 hive --database tpcds_bin_partitioned_orc_1000 -f tpcds_hive_nowhere2_queue2.sql > /dev/null 2>&1
 hive --database tpcds_bin_partitioned_orc_1000 -f tpcds_hive_nowhere2_queue2.sql > /dev/null 2>&1
 hive --database tpcds_bin_partitioned_orc_1000 -f tpcds_hive_nowhere3_queue2.sql > /dev/null 2>&1
+
+hive --database tpcds_bin_partitioned_orc_1000 -f tpcds_hive_nowhere3_queue2.sql > /dev/null 2>&1
+hive --database tpcds_bin_partitioned_orc_1000 -f tpcds_hive_nowhere3_queue2.sql > /dev/null 2>&1
+hive --database tpcds_bin_partitioned_orc_1000 -f tpcds_hive_nowhere1_queue2.sql > /dev/null 2>&1
+hive --database tpcds_bin_partitioned_orc_1000 -f tpcds_hive_nowhere2_queue2.sql > /dev/null 2>&1
+hive --database tpcds_bin_partitioned_orc_1000 -f tpcds_hive_nowhere2_queue2.sql > /dev/null 2>&1
+hive --database tpcds_bin_partitioned_orc_1000 -f tpcds_hive_nowhere3_queue2.sql > /dev/null 2>&1

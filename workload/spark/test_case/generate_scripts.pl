@@ -603,7 +603,7 @@ EOF
 
     if [ \$APP_ID_FROM_LOG != "" ]
     then
-        grep "TAG:$step->{"TAG"} ITER:\$ITER APPID:\$APP_ID_FROM_LOG" > /dev/null 2>&1
+        grep "TAG:$step->{"TAG"} ITER:\$ITER APPID:\$APP_ID_FROM_LOG" \$INFO > /dev/null 2>&1
         if [ \$? -ne 0 ]
         then
             sed -i "s/TAG:$step->{"TAG"} ITER:\$ITER APPID:.*\\\$/TAG:$step->{"TAG"} ITER:\$ITER APPID:\$APP_ID_FROM_LOG/g" \$INFO
