@@ -356,62 +356,62 @@ EOF
         if ((exists $step->{"DROP_CACHE_BETWEEN_REPEAT"}) and ($step->{"DROP_CACHE_BETWEEN_REPEAT"} eq "FALSE")) {
             $drop_cache_between_run = 0;
         }
+        my $skip_standalone_worker_restart = 0;
         if (not ((exists $step->{"CMD"}->{"EXECUTOR_PER_DN"}) and (exists $step->{"CMD"}->{"EXECUTOR_VCORES"}))) {
-            close $script_fh;
-            `rm -rf $script_dir_full`;
-            die "TAG ".$step->{"TAG"}." please configure EXECUTOR_PER_DN/EXECUTOR_VCORES in CMD section";
-        }
-        $def_worker_instances = $step->{"CMD"}->{"EXECUTOR_PER_DN"};
-        $def_worker_cores = $step->{"CMD"}->{"EXECUTOR_VCORES"};
-        if (($is_power == 1) and ($change_smt == 1)) {
-            my $set_smt = 0;
-            if (exists $step->{"SMT"}) {
-                $smt_changed = 1;
-                $smt_reset = 1;
-                $set_smt = $step->{"SMT"};
-            } else {
-                $smt_changed = 1;
-                $smt_reset = 1;
-
-                # For YARN, we need to add additional core for Application Master
-                if ($spark_conf->{"SCHEDULER"} eq "YARN") {
-                    $def_worker_cores = $def_worker_cores + 1;
-                }
-                my $node_cores_required = $def_worker_instances * $def_worker_cores;
-                my $smt_ratio = ($node_cores_required * 1.0)/($cores * 1.0);
-                if ($smt_ratio <= 1.0) {
-                    $set_smt = 1;
-                } elsif ($smt_ratio <= 2.0) {
-                    $set_smt = 2;
-                } elsif ($smt_ratio <= 4.0) {
-                    $set_smt = 4;
-                } elsif ($smt_ratio <= 8.0) {
-                    $set_smt = 8;
+            $skip_standalone_worker_restart = 1;
+        } else {
+            $def_worker_instances = $step->{"CMD"}->{"EXECUTOR_PER_DN"};
+            $def_worker_cores = $step->{"CMD"}->{"EXECUTOR_VCORES"};
+            if (($is_power == 1) and ($change_smt == 1)) {
+                my $set_smt = 0;
+                if (exists $step->{"SMT"}) {
+                    $smt_changed = 1;
+                    $smt_reset = 1;
+                    $set_smt = $step->{"SMT"};
                 } else {
-                    close $script_fh;
-                    `rm -rf $script_dir_full`;
-                    die "TAG ".$step->{"TAG"}." EXECUTOR_PER_DN(".$def_worker_instances.") X EXECUTOR_VCORES(".$def_worker_cores.") exceed available cores in all slaves";
-                }
+                    $smt_changed = 1;
+                    $smt_reset = 1;
 
-                # For YARN, we need to restore the original core config
-                if ($spark_conf->{"SCHEDULER"} eq "YARN") {
-                    $def_worker_cores = $def_worker_cores - 1;
+                    # For YARN, we need to add additional core for Application Master
+                    if ($spark_conf->{"SCHEDULER"} eq "YARN") {
+                        $def_worker_cores = $def_worker_cores + 1;
+                    }
+                    my $node_cores_required = $def_worker_instances * $def_worker_cores;
+                    my $smt_ratio = ($node_cores_required * 1.0)/($cores * 1.0);
+                    if ($smt_ratio <= 1.0) {
+                        $set_smt = 1;
+                    } elsif ($smt_ratio <= 2.0) {
+                        $set_smt = 2;
+                    } elsif ($smt_ratio <= 4.0) {
+                        $set_smt = 4;
+                    } elsif ($smt_ratio <= 8.0) {
+                        $set_smt = 8;
+                    } else {
+                        close $script_fh;
+                        `rm -rf $script_dir_full`;
+                        die "TAG ".$step->{"TAG"}." EXECUTOR_PER_DN(".$def_worker_instances.") X EXECUTOR_VCORES(".$def_worker_cores.") exceed available cores in all slaves";
+                    }
+
+                    # For YARN, we need to restore the original core config
+                    if ($spark_conf->{"SCHEDULER"} eq "YARN") {
+                        $def_worker_cores = $def_worker_cores - 1;
+                    }
                 }
-            }
-            print $script_fh <<EOF;
+                print $script_fh <<EOF;
 # TEST STEP:$step->{"TAG"}
 EOF
-            if ($smt_changed == 1) {
-                print $script_fh <<EOF;
+                if ($smt_changed == 1) {
+                    print $script_fh <<EOF;
 echo "SET SMT to $set_smt on all slaves"
 SMT_NEED_RESET=1
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=$set_smt"
 EOF
+                }
             }
         }
 
         # For standalone mode, need to update spark-env.sh with ENV, then restart master/slaves
-        if (($spark_conf->{"SCHEDULER"} eq "STANDALONE") and (($last_worker_instances != $def_worker_instances) or ($last_worker_cores != $def_worker_cores))) {
+        if (($spark_conf->{"SCHEDULER"} eq "STANDALONE") and (($last_worker_instances != $def_worker_instances) or ($last_worker_cores != $def_worker_cores)) and ($skip_standalone_worker_restart == 0)) {
             print $script_fh <<EOF;
 $spark_conf->{"SPARK_HOME"}/sbin/stop-all.sh
 \\cp \$RUNDIR/.spark-env.sh.backup.master $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
