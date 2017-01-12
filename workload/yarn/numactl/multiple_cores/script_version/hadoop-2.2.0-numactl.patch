@@ -1,0 +1,83 @@
+--- hadoop-2.2.0-src/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-nodemanager/src/main/java/org/apache/hadoop/yarn/server/nodemanager/DefaultContainerExecutor.java	2013-10-07 13:52:20.000000000 +0800
++++ /root/hadoop-2.2.0-src/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-nodemanager/src/main/java/org/apache/hadoop/yarn/server/nodemanager/DefaultContainerExecutor.java	2017-01-05 17:02:29.000000000 +0800
+@@ -151,7 +151,7 @@
+     // Create new local launch wrapper script
+     LocalWrapperScriptBuilder sb = Shell.WINDOWS ?
+       new WindowsLocalWrapperScriptBuilder(containerIdStr, containerWorkDir) :
+-      new UnixLocalWrapperScriptBuilder(containerWorkDir);
++      new UnixLocalWrapperScriptBuilder(containerIdStr, containerWorkDir);
+ 
+     // Fail fast if attempting to launch the wrapper script would fail due to
+     // Windows path length limitation.
+@@ -197,10 +197,18 @@
+       else {
+         LOG.info("Container " + containerIdStr +
+             " was marked as inactive. Returning terminated error");
++        String[] debug = new String[2];
++        debug[0] = new String("/root/scripts/release_vcore.sh");
++        debug[1] = new String(containerIdStr);
++        Shell.execCommand(null, debug, 0);
+         return ExitCode.TERMINATED.getExitCode();
+       }
+     } catch (IOException e) {
+       if (null == shExec) {
++        String[] debug = new String[2];
++        debug[0] = new String("/root/scripts/release_vcore.sh");
++        debug[1] = new String(containerIdStr);
++        Shell.execCommand(null, debug, 0);
+         return -1;
+       }
+       int exitCode = shExec.getExitCode();
+@@ -221,10 +229,19 @@
+         container.handle(new ContainerDiagnosticsUpdateEvent(containerId,
+             "Container killed on request. Exit code is " + exitCode));
+       }
++      String[] debug = new String[2];
++      debug[0] = new String("/root/scripts/release_vcore.sh");
++      debug[1] = new String(containerIdStr);
++      Shell.execCommand(null, debug, 0);
+       return exitCode;
+     } finally {
+-      ; //
++      ;
+     }
++    //LOG.info("Call /root/scripts/release_vcore.sh " + containerIdStr);
++    String[] debug = new String[2];
++    debug[0] = new String("/root/scripts/release_vcore.sh");
++    debug[1] = new String(containerIdStr);
++    Shell.execCommand(null, debug, 0);
+     return 0;
+   }
+ 
+@@ -260,9 +277,12 @@
+ 
+   private final class UnixLocalWrapperScriptBuilder
+       extends LocalWrapperScriptBuilder {
++    private final String containerIdStr;
+ 
+-    public UnixLocalWrapperScriptBuilder(Path containerWorkDir) {
++    public UnixLocalWrapperScriptBuilder(String containerIdStr,
++        Path containerWorkDir) {
+       super(containerWorkDir);
++      this.containerIdStr = containerIdStr;
+     }
+ 
+     @Override
+@@ -276,8 +296,16 @@
+       pout.println();
+       pout.println("echo $$ > " + pidFile.toString() + ".tmp");
+       pout.println("/bin/mv -f " + pidFile.toString() + ".tmp " + pidFile);
++      pout.println("grep -w \"\\-\\-cores\" " + launchDst.toUri().getPath().toString());
++      pout.println("if [ $? -ne 0 ]");
++      pout.println("then");
++      pout.println("    CORES=1");
++      pout.println("else");
++      pout.println("    CORES=`grep -w \"\\-\\-cores\" " + launchDst.toUri().getPath().toString() + " | awk -F\"--cores \" '{print $2}' | awk '{print $1}'`");
++      pout.println("fi");
++      pout.println("VCPU=`/root/scripts/allocate_vcore.sh ${CORES} " + containerIdStr + "`");
+       String exec = Shell.isSetsidAvailable? "exec setsid" : "exec";
+-      pout.println(exec + " /bin/bash -c \"" +
++      pout.println(exec + " /bin/bash -c \"" + "numactl -C ${VCPU} " +
+         launchDst.toUri().getPath().toString() + "\"");
+     }
+   }
