@@ -30,7 +30,7 @@
             "PARAM" : [
                 {
                     "--conf" : [
-                        "spark.executor.extraJavaOptions=\\\"-server -XX:+UseParallelGC -XX:ParallelGCThreads=2 -XX:ConcGCThreads=2 -XX:+UseAdaptiveSizePolicy -verbose:gc -Xloggc:/home/hduser/gclog/Parallel/gc_%p.log -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintFlagsFinal\\\""
+                        "spark.executor.extraJavaOptions=\\\"-server -XX:+UseParallelGC -XX:ParallelGCThreads=2 -XX:ConcGCThreads=2 -XX:+UseAdaptiveSizePolicy -verbose:gc -Xloggc:/tmp/gc_%p.log -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintFlagsFinal\\\""
                     ]
                 },
                 "--queue root.spark",

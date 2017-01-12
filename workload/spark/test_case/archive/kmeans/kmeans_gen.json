@@ -13,7 +13,7 @@
             "PARAM" : [
                 {
                     "--conf" : [
-                        "spark.executor.extraJavaOptions=\\\"-Dcom.sun.management.jmxremote -server -Xmx3g -Xmn1g -XX:+UseMembar -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:+CMSScavengeBeforeRemark -XX:ParallelCMSThreads=8 -XX:SurvivorRatio=4 -XX:+UseCMSCompactAtFullCollection -verbose:gc -Xloggc:/tmp/gc.log.`date +%Y-%m-%d-%H-%M-%S` -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+CMSClassUnloadingEnabled -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=1\\\""
+                        "spark.executor.extraJavaOptions=\\\"-Dcom.sun.management.jmxremote -server -XX:+UseMembar -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:+CMSScavengeBeforeRemark -XX:ParallelCMSThreads=8 -XX:SurvivorRatio=4 -XX:+UseCMSCompactAtFullCollection -XX:+CMSClassUnloadingEnabled -XX:CMSInitiatingOccupancyFraction=70 -XX:CMSFullGCsBeforeCompaction=1\\\""
                     ]
                 },
                 "--class kmeans_min.src.main.scala.KmeansDataGen",

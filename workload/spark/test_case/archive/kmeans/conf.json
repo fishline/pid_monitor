@@ -1,0 +1,10 @@
+{
+    "SPARK_HOME" : "/home/hduser/spark-1.6.1-bin-hadoop2.3",
+    "HADOOP_HOME" : "/home/maha/hadoop-2.2.0",
+    "MASTER" : "namenode",
+    "SCHEDULER" : "YARN",
+    "SPARK_DEFAULTS" : {
+        "spark.eventLog.enabled" : "true",
+        "spark.eventLog.dir" : "/tmp/sparkLogs"
+    }
+}
