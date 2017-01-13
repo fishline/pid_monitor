@@ -106,17 +106,6 @@ void *req_handler(void *info)
         }
         printf("\n");
         pthread_mutex_unlock(&node_usage_lock);
-        for (int idx = 0; idx < node_cnt; idx++) {
-            printf("Node %d:\n", idx);
-
-            pthread_mutex_lock(&(vcpu_usage_lock[idx]));
-            for (int i = 0; i < node_vcpu_cnt[idx]; i++) {
-                printf("%d(%d) ", vcpu_usage[idx][i], vcpu_idx[idx][i]);
-            }
-            printf("\n");
-            pthread_mutex_unlock(&(vcpu_usage_lock[idx]));
-        }
-
     } else if (req_count != 0) {
         unsigned int min_node_usage = 9999;
         int min_node_idx = -1;
@@ -130,35 +119,14 @@ void *req_handler(void *info)
         node_usage[min_node_idx] = node_usage[min_node_idx] + req_count;
         pthread_mutex_unlock(&node_usage_lock);
 
-        int group_count = (node_vcpu_cnt[min_node_idx] + req_count - 1)/req_count;
-        // Working on node
-        pthread_mutex_lock(&(vcpu_usage_lock[min_node_idx]));
-        for (int idx = 0; idx < group_count; idx++) {
-            int start_idx = idx * req_count;
-            for (int i = 0; i < req_count; i++) {
-                group_account[idx] = group_account[idx] + vcpu_usage[min_node_idx][(start_idx + i) % node_vcpu_cnt[min_node_idx]];
-            }
-        }
-        unsigned int min_group_usage = 9999;
-        int min_group_idx = -1;
-        for (int idx = 0; idx < group_count; idx++) {
-            if (group_account[idx] < min_group_usage) {
-                min_group_idx = idx;
-                min_group_usage = group_account[idx];
-            }
-        }
-        int start_idx = min_group_idx * req_count;
-        char unit[3] = {0};
-        for (int idx = 0; idx < req_count; idx++) {
-            int i = (start_idx + idx) % node_vcpu_cnt[min_node_idx];
-            vcpu_usage[min_node_idx][i] = vcpu_usage[min_node_idx][i] + 1;
-            sprintf(unit, "%d", vcpu_idx[min_node_idx][i]);
+        unsigned char unit[4] = {0};
+        for (int idx = 0; idx < node_vcpu_cnt[min_node_idx]; idx++) {
+            sprintf(unit, "%d", vcpu_idx[min_node_idx][idx]);
             strcat(result, unit);
-            if (idx != (req_count -1)) {
+            if (idx != (node_vcpu_cnt[min_node_idx] -1)) {
                 strcat(result, ",");
             }
         }
-        pthread_mutex_unlock(&(vcpu_usage_lock[min_node_idx]));
 
         int size = strlen(result) + 1;
         n = write(*sock_ptr, &(result[0]), size);
@@ -176,7 +144,7 @@ void *req_handler(void *info)
         }
         strcpy(&(usage_ptr->container_id[0]), req_pid);
         usage_ptr->node_idx = min_node_idx;
-        usage_ptr->vcpu_start_idx = start_idx;
+        usage_ptr->vcpu_start_idx = 0;
         usage_ptr->vcpu_count = req_count;
 
         pthread_mutex_lock(&(current_usage_lock[hash_idx]));
@@ -210,12 +178,6 @@ void *req_handler(void *info)
         node_usage[usage_ptr->node_idx] = node_usage[usage_ptr->node_idx] - usage_ptr->vcpu_count;
         pthread_mutex_unlock(&node_usage_lock);
 
-        pthread_mutex_lock(&(vcpu_usage_lock[usage_ptr->node_idx]));
-        for (int idx = 0; idx < usage_ptr->vcpu_count; idx++) {
-            int i = (usage_ptr->vcpu_start_idx + idx) % node_vcpu_cnt[usage_ptr->node_idx];
-            vcpu_usage[usage_ptr->node_idx][i] = vcpu_usage[usage_ptr->node_idx][i] - 1;
-        }
-        pthread_mutex_unlock(&(vcpu_usage_lock[usage_ptr->node_idx]));
         free(usage_ptr);
     }
 
