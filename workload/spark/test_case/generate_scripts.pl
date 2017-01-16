@@ -463,9 +463,11 @@ EOF
             }
         } else {
             $cmd = $cmd." --master yarn";
-            my $total_executors = $slave_count * $def_worker_instances;
-            $cmd = $cmd." --num-executors $total_executors";
-            $cmd = $cmd." --executor-cores $def_worker_cores";
+            if (exists $step->{"CMD"}->{"EXECUTOR_PER_DN"}) {
+                my $total_executors = $slave_count * $def_worker_instances;
+                $cmd = $cmd." --num-executors $total_executors";
+            }
+            $cmd = $cmd." --executor-cores ".$step->{"CMD"}->{"EXECUTOR_VCORES"};
             if (exists $step->{"CMD"}->{"EXECUTOR_MEM"}) {
                 $cmd = $cmd." --executor-memory ".$step->{"CMD"}->{"EXECUTOR_MEM"};
             }
