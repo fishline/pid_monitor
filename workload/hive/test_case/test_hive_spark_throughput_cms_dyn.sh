@@ -34,7 +34,7 @@ begin_time=`date +%s`
 echo "Start spark now"
 cd /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore1_cms_dynamic-20170117014953 && ./run.sh > /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore1_cms_dynamic-20170117014953/run.log 2>&1 &
 cd /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117015001 && ./run.sh > /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117015001/run.log 2>&1 &
-cd /home/hduser/throughput_test
+cd /home/felix/Github/pid_monitor/workload/hive/test_case
 
 echo "Started hive queries"
 ./hive-simple1.sh $FOLDER &
@@ -48,8 +48,8 @@ echo "elapse time: $((end_time - begin_time)) secs" > ${FOLDER}/result.log
 ssh datanode2 "ps -ef | grep nmon | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
 ssh datanode3 "ps -ef | grep nmon | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
 
-ssh datanode2 "ls -lrt | tail -n 1 | awk '{print \$9}' | xargs -i scp {} master:/home/hduser/throughput_test/$FOLDER"
-ssh datanode3 "ls -lrt | tail -n 1 | awk '{print \$9}' | xargs -i scp {} master:/home/hduser/throughput_test/$FOLDER"
+ssh datanode2 "ls -lrt | tail -n 1 | awk '{print \$9}' | xargs -i scp {} master:/home/felix/Github/pid_monitor/workload/hive/test_case/$FOLDER"
+ssh datanode3 "ls -lrt | tail -n 1 | awk '{print \$9}' | xargs -i scp {} master:/home/felix/Github/pid_monitor/workload/hive/test_case/$FOLDER"
 
 # Collect jobhistory, spark event log
 /home/felix/Github/pid_monitor/workload/hive/scripts/query_yarn_app_id_in_some_state.pl /home/maha/hadoop-2.2.0 FINISHED | sed 's/application/job/g' | xargs -i ./wget_mapreduce_job_history.pl {} $FOLDER
