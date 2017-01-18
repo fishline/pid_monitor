@@ -33,7 +33,7 @@ begin_time=`date +%s`
 
 echo "Start spark now"
 cd /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore1_cms_dynamic-20170117014953 && ./run.sh > /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore1_cms_dynamic-20170117014953/run.log 2>&1 &
-cd /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117015001 && ./run.sh > /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117015001/run.log 2>&1 &
+cd /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117214427 && ./run.sh > /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117214427/run.log 2>&1 &
 cd /home/felix/Github/pid_monitor/workload/hive/test_case
 
 echo "Started hive queries"
@@ -55,8 +55,8 @@ ssh datanode3 "ls -lrt | tail -n 1 | awk '{print \$9}' | xargs -i scp {} master:
 /home/felix/Github/pid_monitor/workload/hive/scripts/query_yarn_app_id_in_some_state.pl /home/maha/hadoop-2.2.0 FINISHED | sed 's/application/job/g' | xargs -i ./wget_mapreduce_job_history.pl {} $FOLDER
 cp /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore1_cms_dynamic-20170117014953/rundir/*/latest/spark_events/* $FOLDER/
 cp /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore1_cms_dynamic-20170117014953/info $FOLDER/info1
-cp /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117015001/rundir/*/latest/spark_events/* $FOLDER/
-cp /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117015001/info $FOLDER/info2
+cp /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117214427/rundir/*/latest/spark_events/* $FOLDER/
+cp /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117214427/info $FOLDER/info2
 
 # Dump hive data
 rm -f ${FOLDER}/stats.log
