@@ -232,6 +232,8 @@ CMD_TO_KILL=""
 SMT_NEED_RESET=0
 trap ctrl_c_exit INT
 
+export HADOOP_HOME=$spark_conf->{"HADOOP_HOME"}
+export HADOOP_CONF_DIR=$spark_conf->{"HADOOP_HOME"}/etc/hadoop
 export PMH=$pmh
 export WORKLOAD_NAME=$script_dir
 export DESCRIPTION="$script_dir"
