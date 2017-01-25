@@ -1,0 +1,26 @@
+----------------------------------------------------------------
+Wed Jan 25 05:47:12 EST 2017:
+Booting Derby version The Apache Software Foundation - Apache Derby - 10.10.1.1 - (1458268): instance a816c00e-0159-d53c-8bd2-0000c2cdc5b8 
+on database directory /tmp/spark-e9e4af23-20f3-4271-b608-67419e459c23/metastore with class loader sun.misc.Launcher$AppClassLoader@33909752 
+Loaded from file:/home/test/spark-1.6.1-bin-hadoop2.3/lib/spark-assembly-1.6.1-hadoop2.3.0.jar
+java.vendor=Oracle Corporation
+java.runtime.version=1.8.0_111-b15
+user.dir=/home/test/pid_monitor/workload/hive/test_case/scala
+os.name=Linux
+os.arch=amd64
+os.version=3.10.0-514.el7.x86_64
+derby.system.home=null
+Database Class Loader started - derby.database.classpath=''
+----------------------------------------------------------------
+Wed Jan 25 05:47:25 EST 2017:
+Booting Derby version The Apache Software Foundation - Apache Derby - 10.10.1.1 - (1458268): instance 0309c396-0159-d53c-8bd2-0000c2cdc5b8 
+on database directory /tmp/spark-c3f22e22-4101-4bfd-abee-2eca932c2c75/metastore with class loader sun.misc.Launcher$AppClassLoader@33909752 
+Loaded from file:/home/test/spark-1.6.1-bin-hadoop2.3/lib/spark-assembly-1.6.1-hadoop2.3.0.jar
+java.vendor=Oracle Corporation
+java.runtime.version=1.8.0_111-b15
+user.dir=/home/test/pid_monitor/workload/hive/test_case/scala
+os.name=Linux
+os.arch=amd64
+os.version=3.10.0-514.el7.x86_64
+derby.system.home=null
+Database Class Loader started - derby.database.classpath=''

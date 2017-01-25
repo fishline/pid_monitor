@@ -161,8 +161,8 @@ if ($need_install_tools != 0) {
 if (not (-e "../../../lpcpu.tar.bz2")) {
     die "lpcpu.tar.bz2 not found in repository";
 }
-`scp ../../../lpcpu.tar.bz2 $nodes[0]:/root/`;
-`ssh $nodes[0] "cd /root && tar xjf lpcpu.tar.bz2"`;
+#`scp ../../../lpcpu.tar.bz2 $nodes[0]:/root/`;
+#`ssh $nodes[0] "cd /root && tar xjf lpcpu.tar.bz2"`;
 
 ########### Generate the test scripts ############
 # Header
