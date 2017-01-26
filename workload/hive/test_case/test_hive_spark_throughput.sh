@@ -46,7 +46,7 @@ done
 echo "Start spark now"
 for i in `seq 1`
 do
-    ./spark_user.sh sql_35g 5 ${FOLDER} &
+    ./spark_user.sh sql_35g 2 ${FOLDER} &
     sleep 10
 done
 
@@ -61,7 +61,7 @@ ssh datanode2 "ls -lrt | tail -n 1 | awk '{print \$9}' | xargs -i scp {} namenod
 ssh datanode3 "ls -lrt | tail -n 1 | awk '{print \$9}' | xargs -i scp {} namenode:/home/test/pid_monitor/workload/hive/test_case/$FOLDER"
 
 # Collect spark event log
-ls -lrt /tmp/sparkLogs/ | awk '{print \$9}' | grep -A 10000 "${begin_time}" | grep -v "${begin_time}" | xargs -i \cp /tmp/sparkLogs/{} $FOLDER/
+ls -lrt /tmp/sparkLogs/ | awk '{print $9}' | grep -A 10000 "${begin_time}" | grep -v "${begin_time}" | xargs -i \cp /tmp/sparkLogs/{} $FOLDER/
 
 # Collect jobhistory, spark event log
 /home/test/pid_monitor/workload/hive/scripts/query_yarn_app_id_in_some_state.pl /home/hadoop-2.2.0 FINISHED | sed 's/application/job/g' | xargs -i ./wget_mapreduce_job_history.pl {} $FOLDER
