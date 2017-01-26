@@ -15,16 +15,14 @@ then
     exit 1
 fi
 
-# Restart MR job history server
-jps | grep JobHistoryServer | awk '{print $1}' | xargs -i kill -9 {}
-/home/hadoop-2.2.0/sbin/mr-jobhistory-daemon.sh start historyserver > /dev/null 2>&1
+# Restart MR job history server, this is no necessary most of the time, so comment out...
+#jps | grep JobHistoryServer | awk '{print $1}' | xargs -i kill -9 {}
+#/home/hadoop-2.2.0/sbin/mr-jobhistory-daemon.sh start historyserver > /dev/null 2>&1
 
 # Need restart yarn daemon, we will have a clean picture for log analysis
 /home/hadoop-2.2.0/sbin/stop-yarn.sh > /dev/null 2>&1
 /home/hadoop-2.2.0/sbin/start-yarn.sh > /dev/null 2>&1
 sleep 5
-ssh datanode2 "sync && echo 3 > /proc/sys/vm/drop_caches"
-#ssh datanode3 "sync && echo 3 > /proc/sys/vm/drop_caches"
 ssh datanode2 "ps -ef | grep nmon | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
 #ssh datanode3 "ps -ef | grep nmon | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
 ssh datanode2 "nmon -f -s 5 -c 10000"
@@ -68,26 +66,11 @@ ls -lrt /tmp/sparkLogs/ | awk '{print $9}' | grep -A 10000 "${begin_time}" | gre
 
 # Dump hive data
 rm -f ${FOLDER}/stats.log
-ls ${FOLDER} | grep job_ | xargs -i ./mapreduce_statistics_hadoop220.pl ${FOLDER}/{} >> ${FOLDER}/stats.log
+ls ${FOLDER} | grep ^job_ | xargs -i ./mapreduce_statistics_hadoop220.pl ${FOLDER}/{} >> ${FOLDER}/stats.log
 
 echo "hive MAP_COUNT:" >> ${FOLDER}/result.log
 cat ${FOLDER}/stats.log  | grep datanode2 | grep MAP_COUNT | awk '{print $2}' | awk -F: '{sum+=$2} END {print "datanode2 " sum}' >> ${FOLDER}/result.log
 cat ${FOLDER}/stats.log  | grep datanode3 | grep MAP_COUNT | awk '{print $2}' | awk -F: '{sum+=$2} END {print "datanode3 " sum}' >> ${FOLDER}/result.log
-echo "" >> ${FOLDER}/result.log
-
-echo "hive simple hive_queue.simple1 MAP_COUNT:" >> ${FOLDER}/result.log
-cat ${FOLDER}/stats.log | grep QUEUE:root.hive_queue.simple1 | grep datanode2 | grep MAP_COUNT | awk '{print $2}' | awk -F: '{sum+=$2} END {print "datanode2 " sum}' >> ${FOLDER}/result.log
-cat ${FOLDER}/stats.log | grep QUEUE:root.hive_queue.simple1 | grep datanode3 | grep MAP_COUNT | awk '{print $2}' | awk -F: '{sum+=$2} END {print "datanode3 " sum}' >> ${FOLDER}/result.log
-echo "" >> ${FOLDER}/result.log
-
-echo "hive simple hive_queue.simple2 MAP_COUNT:" >> ${FOLDER}/result.log
-cat ${FOLDER}/stats.log | grep QUEUE:root.hive_queue.simple2 | grep datanode2 | grep MAP_COUNT | awk '{print $2}' | awk -F: '{sum+=$2} END {print "datanode2 " sum}' >> ${FOLDER}/result.log
-cat ${FOLDER}/stats.log | grep QUEUE:root.hive_queue.simple2 | grep datanode3 | grep MAP_COUNT | awk '{print $2}' | awk -F: '{sum+=$2} END {print "datanode3 " sum}' >> ${FOLDER}/result.log
-echo "" >> ${FOLDER}/result.log
-
-echo "hive complex queue MAP_COUNT:" >> ${FOLDER}/result.log
-cat ${FOLDER}/stats.log | grep QUEUE:root.hive_queue.complex | grep datanode2 | grep MAP_COUNT | awk '{print $2}' | awk -F: '{sum+=$2} END {print "datanode2 " sum}' >> ${FOLDER}/result.log
-cat ${FOLDER}/stats.log | grep QUEUE:root.hive_queue.complex | grep datanode3 | grep MAP_COUNT | awk '{print $2}' | awk -F: '{sum+=$2} END {print "datanode3 " sum}' >> ${FOLDER}/result.log
 echo "" >> ${FOLDER}/result.log
 
 echo "hive REDUCE_COUNT:" >> ${FOLDER}/result.log
