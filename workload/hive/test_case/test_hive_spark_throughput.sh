@@ -15,31 +15,40 @@ then
     exit 1
 fi
 
+# Restart MR job history server
+jps | grep JobHistoryServer | awk '{print $1}' | xargs -i kill -9 {}
+/home/hadoop-2.2.0/sbin/mr-jobhistory-daemon.sh start historyserver > /dev/null 2>&1
+
 # Need restart yarn daemon, we will have a clean picture for log analysis
-/home/maha/hadoop-2.2.0/sbin/stop-yarn.sh > /dev/null 2>&1
-/home/maha/hadoop-2.2.0/sbin/start-yarn.sh > /dev/null 2>&1
+/home/hadoop-2.2.0/sbin/stop-yarn.sh > /dev/null 2>&1
+/home/hadoop-2.2.0/sbin/start-yarn.sh > /dev/null 2>&1
 sleep 5
 ssh datanode2 "sync && echo 3 > /proc/sys/vm/drop_caches"
-ssh datanode3 "sync && echo 3 > /proc/sys/vm/drop_caches"
+#ssh datanode3 "sync && echo 3 > /proc/sys/vm/drop_caches"
 ssh datanode2 "ps -ef | grep nmon | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
-ssh datanode3 "ps -ef | grep nmon | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
+#ssh datanode3 "ps -ef | grep nmon | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
 ssh datanode2 "nmon -f -s 5 -c 10000"
-ssh datanode3 "nmon -f -s 5 -c 10000"
+#ssh datanode3 "nmon -f -s 5 -c 10000"
 begin_time=`date +%s`
+touch /tmp/sparkLogs/${begin_time}
 
 # Start hive queries first
 # Notice: we have to make sure we have 3 queues of hive query running, and each queue has one running job
 # spark run depends on this assumption
 
-echo "Start spark now"
-cd /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore1_cms_dynamic-20170117014953 && ./run.sh > /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore1_cms_dynamic-20170117014953/run.log 2>&1 &
-cd /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117214427 && ./run.sh > /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117214427/run.log 2>&1 &
-cd /home/felix/Github/pid_monitor/workload/hive/test_case
-
 echo "Started hive queries"
-./hive-simple1.sh $FOLDER &
-./hive-simple2.sh $FOLDER &
-./hive-complex.sh $FOLDER &
+for i in `seq 5`
+do
+    ./hive_user.sh sql_35g 5 ${FOLDER} &
+    sleep 10
+done
+
+echo "Start spark now"
+for i in `seq 1`
+do
+    ./spark_user.sh sql_35g 5 ${FOLDER} &
+    sleep 10
+done
 
 wait
 
@@ -48,15 +57,14 @@ echo "elapse time: $((end_time - begin_time)) secs" > ${FOLDER}/result.log
 ssh datanode2 "ps -ef | grep nmon | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
 ssh datanode3 "ps -ef | grep nmon | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
 
-ssh datanode2 "ls -lrt | tail -n 1 | awk '{print \$9}' | xargs -i scp {} master:/home/felix/Github/pid_monitor/workload/hive/test_case/$FOLDER"
-ssh datanode3 "ls -lrt | tail -n 1 | awk '{print \$9}' | xargs -i scp {} master:/home/felix/Github/pid_monitor/workload/hive/test_case/$FOLDER"
+ssh datanode2 "ls -lrt | tail -n 1 | awk '{print \$9}' | xargs -i scp {} namenode:/home/test/pid_monitor/workload/hive/test_case/$FOLDER"
+ssh datanode3 "ls -lrt | tail -n 1 | awk '{print \$9}' | xargs -i scp {} namenode:/home/test/pid_monitor/workload/hive/test_case/$FOLDER"
+
+# Collect spark event log
+ls -lrt /tmp/sparkLogs/ | awk '{print \$9}' | grep -A 10000 "${begin_time}" | grep -v "${begin_time}" | xargs -i \cp /tmp/sparkLogs/{} $FOLDER/
 
 # Collect jobhistory, spark event log
-/home/felix/Github/pid_monitor/workload/hive/scripts/query_yarn_app_id_in_some_state.pl /home/maha/hadoop-2.2.0 FINISHED | sed 's/application/job/g' | xargs -i ./wget_mapreduce_job_history.pl {} $FOLDER
-cp /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore1_cms_dynamic-20170117014953/rundir/*/latest/spark_events/* $FOLDER/
-cp /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore1_cms_dynamic-20170117014953/info $FOLDER/info1
-cp /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117214427/rundir/*/latest/spark_events/* $FOLDER/
-cp /home/felix/Github/pid_monitor/workload/spark/test_case/spark_sql_vcore2_cms_dynamic-20170117214427/info $FOLDER/info2
+/home/test/pid_monitor/workload/hive/scripts/query_yarn_app_id_in_some_state.pl /home/hadoop-2.2.0 FINISHED | sed 's/application/job/g' | xargs -i ./wget_mapreduce_job_history.pl {} $FOLDER
 
 # Dump hive data
 rm -f ${FOLDER}/stats.log
@@ -135,12 +143,10 @@ cat ${FOLDER}/stats.log  | grep datanode2 | grep TOTAL_MAP_CPU_TIME | awk '{prin
 cat ${FOLDER}/stats.log  | grep datanode3 | grep TOTAL_MAP_CPU_TIME | awk '{print $2}' | awk -F: '{sum+=$2} END {print "datanode3 " sum}' >> ${FOLDER}/result.log
 echo "" >> ${FOLDER}/result.log
 
-echo "hive simple end-to-end(s):" >> ${FOLDER}/result.log
-cat ${FOLDER}/hive_simple_duration.log | awk '{sum+=$1; count+=1;} END {print "datanode " sum/count}' >> ${FOLDER}/result.log
-echo "hive complex end-to-end(s):" >> ${FOLDER}/result.log
-cat ${FOLDER}/hive_complex_duration.log | awk '{sum+=$1; count+=1;} END {print "datanode " sum/count}' >> ${FOLDER}/result.log
+echo "hive end-to-end(s):" >> ${FOLDER}/result.log
+cat ${FOLDER}/hive_job_e2e_sec.log | awk '{sum+=$1; count+=1;} END {print "datanode " sum/count}' >> ${FOLDER}/result.log
 echo "spark end-to-end(s):" >> ${FOLDER}/result.log
-cat ${FOLDER}/info* | grep DURATION | awk -F: '{sum+=$4; count+=1;} END {print "datanode " sum/count}' >> ${FOLDER}/result.log
+cat ${FOLDER}/spark_job_e2e_sec.log | awk '{sum+=$1; count+=1;} END {print "datanode " sum/count}' >> ${FOLDER}/result.log
 
 cat ${FOLDER}/result.log
 echo ""
