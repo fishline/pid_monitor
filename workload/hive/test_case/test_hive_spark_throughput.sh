@@ -1,5 +1,11 @@
 #!/bin/bash
 
+DB_BASENAME="sql_35g"
+HIVE_USER=5
+HIVE_QUERIES_PER_USER=5
+SPARK_USER=1
+SPARK_QUERIES_PER_USER=2
+
 if [ "$#" -ne 1 ]
 then
     echo "Usage: ./test_hive_spark_throughput.sh <NAME of result folder>"
@@ -24,9 +30,9 @@ fi
 /home/hadoop-2.2.0/sbin/start-yarn.sh > /dev/null 2>&1
 sleep 5
 ssh datanode2 "ps -ef | grep nmon | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
-#ssh datanode3 "ps -ef | grep nmon | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
+ssh datanode3 "ps -ef | grep nmon | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
 ssh datanode2 "nmon -f -s 5 -c 10000"
-#ssh datanode3 "nmon -f -s 5 -c 10000"
+ssh datanode3 "nmon -f -s 5 -c 10000"
 begin_time=`date +%s`
 touch /tmp/sparkLogs/${begin_time}
 
@@ -35,16 +41,16 @@ touch /tmp/sparkLogs/${begin_time}
 # spark run depends on this assumption
 
 echo "Started hive queries"
-for i in `seq 5`
+for i in `seq ${HIVE_USER}`
 do
-    ./hive_user.sh sql_35g 5 ${FOLDER} &
+    ./hive_user.sh ${DB_BASENAME} ${HIVE_QUERIES_PER_USER} ${FOLDER} &
     sleep 10
 done
 
 echo "Start spark now"
-for i in `seq 1`
+for i in `seq ${SPARK_USER}`
 do
-    ./spark_user.sh sql_35g 2 ${FOLDER} &
+    ./spark_user.sh ${DB_BASENAME} ${SPARK_QUERIES_PER_USER} ${FOLDER} &
     sleep 10
 done
 
