@@ -47,6 +47,15 @@ object RMATGeneratorDistributed {
   }
 
   def main(args: Array[String]) {
+    /*
+        Problem Class   V Scale E/V approx storage (TB)
+        toy (level 10)  26  16  0.0172
+        mini (level 11) 29  16  0.1374
+        small (level 12)    32  16  1.0995
+        medium (level 13)   36  16  17.5922
+        large (level 14)    39  16  140.7375
+        huge (level 15) 42  16  1125.8999
+    */
     if (args.length < 4) {
       println("usage: <output> <Vertices scale> <Edge/Vetrics ratio> <numPartitions>")
       System.exit(0)
