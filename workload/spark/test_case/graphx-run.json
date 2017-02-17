@@ -1,0 +1,44 @@
+[
+    {
+        "USE" : "graphx-gen-conf.json"
+    },
+    {
+        "SUMMARY" : {
+            "median_sec" : [
+                "<PMH>/workload/spark/scripts/spark_event_log_median_sec.pl",
+                "<INFO>",
+                "<TAG>"
+            ],
+            "spark_event_log" : [
+                "<PMH>/workload/spark/scripts/spark_event_log_web_link.pl",
+                "<INFO>",
+                "<TAG>"
+            ]
+        }
+    },
+    {
+        "TAG" : "graphx-run",
+        "CMD" : {
+            "COMMAND" : "<SPARK_HOME>/bin/spark-submit",
+            "EXECUTOR_PER_DN" : 6,
+            "EXECUTOR_VCORES" : 2,
+            "EXECUTOR_MEM" : "50g",
+            "DRIVER_MEM" : "8g",
+            "PARAM" : [
+                {
+                    "--conf" : [
+                        "spark.executor.extraJavaOptions=\\\"-XX:+CMSClassUnloadingEnabled -XX:CMSInitiatingOccupancyFraction=75 -XX:+CMSParallelRemarkEnabled -XX:+CMSScavengeBeforeRemark -XX:ConcGCThreads=4 -XX:InitialHeapSize=53687091200 -XX:MaxHeapSize=53687091200 -XX:NewRatio=4 -XX:OldPLABSize=16 -XX:+PrintGC -XX:+PrintGCDateStamps -XX:-PrintGCDetails -XX:+PrintGCTimeStamps -XX:SurvivorRatio=4 -XX:+UseCMSCompactAtFullCollection -XX:+UseConcMarkSweepGC -XX:+UseMembar -XX:+UseParNewGC\\\"",
+                        "spark.storage.memoryFraction=0.4",
+                        "spark.network.timeout=300",
+                        "spark.scheduler.mode=FIFO"
+                    ]
+                },
+                "--class src.main.scala.pagerankApp",
+                "/home/test/pid_monitor/workload/spark/resources/graphx/target/scala-2.10/graphx-app_2.10-1.0.jar",
+                "hdfs://10.10.10.10/graphx_input2 hdfs://10.10.10.10/graphx_output 1024 2 0.001 0.15 MEMORY_AND_DISK"
+            ]
+        },
+        "REPEAT" : 1,
+        "DROP_CACHE_BETWEEN_REPEAT" : "FALSE"
+    }
+]
