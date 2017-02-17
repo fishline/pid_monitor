@@ -1,0 +1,41 @@
+[
+    {
+        "USE" : "graphx-gen-conf.json"
+    },
+    {
+        "SUMMARY" : {
+            "median_sec" : [
+                "<PMH>/workload/spark/scripts/spark_event_log_median_sec.pl",
+                "<INFO>",
+                "<TAG>"
+            ],
+            "spark_event_log" : [
+                "<PMH>/workload/spark/scripts/spark_event_log_web_link.pl",
+                "<INFO>",
+                "<TAG>"
+            ]
+        }
+    },
+    {
+        "TAG" : "graphx-run",
+        "CMD" : {
+            "COMMAND" : "<SPARK_HOME>/bin/spark-submit",
+            "EXECUTOR_PER_DN" : 10,
+            "EXECUTOR_VCORES" : 8,
+            "EXECUTOR_MEM" : "24g",
+            "DRIVER_MEM" : "4g",
+            "PARAM" : [
+                {
+                    "--conf" : [
+                        "spark.executor.extraJavaOptions=\\\"-XX:ParallelGCThreads=8 -XX:+AlwaysTenure\\\""
+                    ]
+                },
+                "--class src.main.scala.pagerankApp",
+                "/home/test/pid_monitor/workload/spark/resources/graphx/target/scala-2.10/graphx-app_2.10-1.0.jar",
+                "hdfs://10.10.10.10/graphx_input1 hdfs://10.10.10.10/graphx_output 256 12 0.001 0.15 MEMORY_AND_DISK"
+            ]
+        },
+        "REPEAT" : 1,
+        "DROP_CACHE_BETWEEN_REPEAT" : "FALSE"
+    }
+]
