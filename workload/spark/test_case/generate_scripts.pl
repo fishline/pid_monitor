@@ -241,6 +241,7 @@ export WORKLOAD_DIR="."      # The workload working directory
 export MEAS_DELAY_SEC=1      # Delay between each measurement
 export RUNDIR=\$(\${PMH}/setup-run.sh \$WORKLOAD_NAME)
 mkdir \$RUNDIR/spark_events
+mkdir \$RUNDIR/nmon
 INFO=\$PMH/workload/spark/test_case/$script_dir/info
 APPID=\$PMH/workload/spark/test_case/$script_dir/appid
 DEBUG=\$PMH/workload/spark/test_case/$script_dir/debug.log
@@ -316,7 +317,7 @@ EOF
             print $script_fh <<EOF;
 # ACTION $step->{"ACTION"}
 sync && echo 3 > /proc/sys/vm/drop_caches
-grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "sync && echo 3 > /proc/sys/vm/drop_caches"
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh -l root {} "sync && echo 3 > /proc/sys/vm/drop_caches"
 
 EOF
         } elsif ($step->{"ACTION"} eq "WAIT") {
@@ -450,6 +451,13 @@ EOF
         if ($step->{"CMD"}->{"COMMAND"} =~ /\<SPARK_HOME\>/) {
             $step->{"CMD"}->{"COMMAND"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
         }
+        if ((exists $step->{"COLLECT_NMON"}) and ($step->{"COLLECT_NMON"} eq "TRUE")) {
+            print $script_fh <<EOF;
+# Stop/Start nmon
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ps -ef | grep nmon | grep -v grep | awk '{print \\\$2}' | xargs -i kill -9 \\{\\}"
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "nmon -f -s 5 -c 10000"
+EOF
+        }
         print $script_fh <<EOF;
 CMD_TO_KILL="$step->{"CMD"}->{"COMMAND"}"
 EOF
@@ -529,7 +537,7 @@ EOF
     if [ \$ITER -ne 1 ] 
     then
         sync && echo 3 > /proc/sys/vm/drop_caches
-        grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "sync && echo 3 > /proc/sys/vm/drop_caches"
+        grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh -l root {} "sync && echo 3 > /proc/sys/vm/drop_caches"
     fi
 EOF
         }
@@ -664,6 +672,15 @@ EOF
         }
         $last_worker_instances = $def_worker_instances;
         $last_worker_cores = $def_worker_cores;
+        if ((exists $step->{"COLLECT_NMON"}) and ($step->{"COLLECT_NMON"} eq "TRUE")) {
+            print $script_fh <<EOF;
+# Stop nmon and collect nmon logs
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ps -ef | grep nmon | grep -v grep | awk '{print \\\$2}' | xargs -i kill -9 \\{\\}"
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ls -lrt | tail -n 1 | awk '{print \\\$9}' | xargs -i scp \\{\\} $spark_conf->{"MASTER"}:\$RUNDIR/nmon/"
+
+EOF
+        }
+
     } elsif (exists $step->{"SHELL"}) {
         if ($step->{"SHELL"} =~ /\<HADOOP_HOME\>/) {
             $step->{"SHELL"} =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
