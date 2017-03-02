@@ -32,7 +32,7 @@
                 },
                 "--class src.main.scala.RMATGeneratorDistributed",
                 "/home/test/pid_monitor/workload/spark/resources/graphx/target/scala-2.10/graphx-app_2.10-1.0.jar",
-                "hdfs://10.10.10.10/graphx_input2 28 16 4096"
+                "hdfs://10.10.10.10/graphx_input3 25 16 256"
             ]
         },
         "REPEAT" : 1,
