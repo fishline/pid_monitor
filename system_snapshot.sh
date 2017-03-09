@@ -9,7 +9,7 @@ else
   SSH_FLAG=1
 fi
 
-TMPDIR=/tmp/${USER}
+TMPDIR=/tmp/${USER}_PM
 
 echo Collecting system snapshot on $HOST
 

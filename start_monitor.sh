@@ -11,7 +11,7 @@ if [ "$HOST" == "$(hostname)" ] || [ "$HOST" == "$(hostname -s)" ]
 then
   TARGET_FN=$3
 else
-  TARGET_FN=/tmp/${USER}/pid_monitor/$(basename $3)
+  TARGET_FN=/tmp/${USER}_PM/pid_monitor/$(basename $3)
 fi
 
 [ "$MONITOR" == "dstat" ] && \
@@ -56,7 +56,7 @@ else
   [ $RC -ne 0 ] && echo WARNING: $MONITOR appears to be running on $HOST.
 
   # Start $MONITOR
-  REMOTE_CMD="mkdir -p /tmp/${USER}/pid_monitor/; \
+  REMOTE_CMD="mkdir -p /tmp/${USER}_PM/pid_monitor/; \
 	   rm -f $TARGET_FN; \
 	   $RUN_CMD "
   $(ssh $HOST $REMOTE_CMD) 2>/dev/null &

@@ -4,14 +4,14 @@
 BS=512k    # default block size
 
 [ "$#" -ne "0" ] && BS=$1
-mkdir -p /tmp/${USER}
+mkdir -p /tmp/${USER}_PM
 I=0
 OUT_FN=/tmp/${USER}tmpfile.$I
 # Make sure that OUT_FN is unique
 while [ -e $OUT_FN ]
 do
     I=$((I+1))
-    OUT_FN=/tmp/${USER}/tmpfile.$I
+    OUT_FN=/tmp/${USER}_PM/tmpfile.$I
 done
 
 echo Writing to $OUT_FN
