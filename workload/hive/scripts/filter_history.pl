@@ -2,8 +2,8 @@
 use warnings;
 use strict;
 
-if ($#ARGV != 2) {
-    print "Usage: ./filter_history.pl <Begin time> <End time> <File includes mr job history>\n";
+if ($#ARGV != 3) {
+    print "Usage: ./filter_history.pl <Begin time> <End time> <File includes mr job history> <Type: MAPREDUCE or SPARK>\n";
     exit 1;
 }
 
@@ -11,7 +11,7 @@ my $begin_unix_time = `date --date='$ARGV[0]' +"%s"`;
 chomp($begin_unix_time);
 my $end_unix_time = `date --date='$ARGV[1]' +"%s"`;
 chomp($end_unix_time);
-my $ret = `grep "href" ./app | grep "SUCCEEDED" | awk -F, '{print \$1 " " \$2 " " \$3}'`;
+my $ret = `grep "href" ./$ARGV[2] | grep "SUCCEEDED" | grep $ARGV[3] | awk -F, '{print \$1 " " \$2 " " \$3}'`;
 my @lines = split(/\n/, $ret);
 foreach my $line (@lines) {
     if ($line =~ /^\["([^"]+)"\s+"([^"]+)"\s+"([^"]+)"/) {

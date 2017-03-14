@@ -23,87 +23,6 @@ import org.graphframes.GraphFrame.{DST, ID, SRC}
 import org.apache.spark.sql.Row
 
 object CommonFriendsGF extends Logging {
-    
-    object Buffer {
-        def create():Buffer = {
-            new Buffer(4)
-        }
-
-        def create(value:Long):Buffer = {
-            var buf = new Buffer(1)
-            buf += value
-        }
-    }
-
-    class Buffer (initSize:Int) extends scala.Serializable {
-        var curSize:Int = 0 
-        var elements:Array[Long] = new Array[Long](initSize)
-
-        def +=(value:Long):Buffer = {
-            val newIdx = curSize
-            grow2Size(curSize + 1)
-            elements(newIdx) = value
-            this
-        }
-
-        def ++=(value:Buffer):Buffer = {
-            val oldSize = this.curSize
-            val itsSize = value.curSize
-            var itsElements = value.elements
-            grow2Size(oldSize + itsSize)
-            System.arraycopy(itsElements, 0, this.elements, oldSize, itsSize)
-            this
-        }
-
-        def toArray(targetSize:Int):Array[Long] = {
-            var newSize:Int = 0
-
-            if (targetSize > this.curSize) {
-                newSize = this.curSize
-            } else {
-                newSize = targetSize
-            }
-            val result = new Array[Long](newSize)
-            System.arraycopy(this.elements, 0, result, 0, newSize)
-            if (newSize == this.capacity()) {
-                this.elements
-            } else {
-                result
-            }
-        }
-
-        def length():Int = {
-            return this.curSize
-        }
-
-        def size():Int = {
-            return this.curSize
-        }
-
-        def capacity():Int = {
-            return elements.length
-        }
-
-        def grow2Size(newSize:Int):Unit = {
-            if (newSize < 0) {
-                println("grow2Size does not accept negative size")
-                return
-            }
-            if (newSize > capacity()) {
-                var newArrayLen = 8;
-                while (newSize > newArrayLen) {
-                    newArrayLen *= 2
-                    if (newArrayLen == scala.Int.MinValue) {
-                        newArrayLen = 2147483645;
-                    }
-                }
-                var newArray:Array[Long] = new Array[Long](newArrayLen)
-                System.arraycopy(this.elements, 0, newArray, 0, this.elements.length)
-                this.elements = newArray
-            }
-            this.curSize = newSize
-        }
-    }
 
     def main(args: Array[String]) {
         if (args.length < 2) {
@@ -122,7 +41,6 @@ object CommonFriendsGF extends Logging {
 
         val conf = new SparkConf
         conf.setAppName("Spark Graphx-CommonFriend Application")
-        conf.registerKryoClasses(Array(classOf[Buffer]))
         val sc = new SparkContext(conf)
         val sqlContext: SQLContext = new HiveContext(sc)
         var sl:StorageLevel=StorageLevel.MEMORY_AND_DISK;
@@ -178,9 +96,32 @@ object CommonFriendsGF extends Logging {
         val msgToSrc = AggregateMessages.dst("id")
         val aggResult = g2.aggregateMessages.sendToSrc(msgToSrc).agg(sort_array(collect_set(AggregateMessages.msg)))
         val g3 = GraphFrame(g2.vertices.join(aggResult, Seq(ID), "outer"), g2.edges)
-        g3.triplets.map{ case Row(src:Object, edge:Object, dst:Object) =>
-                (1)
+        g2.vertices.join(aggResult, Seq(ID), "outer").printSchema()
+        val result = g3.triplets.map{ case Row(src:Row, edge:Row, dst:Row) => 
+            if ((src.getList(2) == null) || (dst.getList(2) == null)) {
+                (src.getLong(0), dst.getLong(0), 0)
+            } else {
+                val srcNeighbors = src.getList(2)
+                val srcIt = Iterator(srcNeighbors)
+                val dstNeighbors = dst.getList(2)
+                val dstIt = Iterator(dstNeighbors)
+                var count:Int = 0
+                while (srcIt.hasNext()) {
+                    val srcVal = srcIt.next()
+                    while (dstIt.hasNext()) {
+                        val dstVal = dstIt.next()
+                        if (srcVal == dstVal) {
+                            count += 1
+                        } else if (srcVal > dstVal) {
+                            j += 1
+                        } else {
+                            i += 1
+                        }
+                }
+                (src.getLong(0), dst.getLong(0), count)
+            }
         }
+        result.collect().foreach(println)
 
         /*
         val nIds = g2.aggregateMessages[Buffer]( triplet => {
