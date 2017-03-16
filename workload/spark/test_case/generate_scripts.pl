@@ -736,6 +736,124 @@ grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ls
 
 EOF
         }
+    } elsif (exists $step->{"HADOOP"}) {
+        my $tag_idx = 0;
+        if (exists $tags{$step->{"HADOOP"}}) {
+            $tags{$step->{"HADOOP"}} = $tags{$step->{"HADOOP"}} + 1;
+            $step->{"HADOOP"} = $step->{"HADOOP"}."_".$tags{$step->{"HADOOP"}};
+        } else {
+            $tags{$step->{"HADOOP"}} = 1;
+        }
+        if (not (exists $step->{"CMD"})) {
+            close $script_fh;
+            `rm -rf $script_dir_full`;
+            die "Please define CMD section in HADOOP ".$step->{"HADOOP"};
+        }
+        my $repeat = 1;
+        if (exists $step->{"REPEAT"}) {
+            $repeat = $step->{"REPEAT"};
+        }
+        # Default do drop cache between runs
+        my $drop_cache_between_run = 1;
+        if ((exists $step->{"DROP_CACHE_BETWEEN_REPEAT"}) and ($step->{"DROP_CACHE_BETWEEN_REPEAT"} eq "FALSE")) {
+            $drop_cache_between_run = 0;
+        }
+
+        my $cmd = "";
+        if ($step->{"CMD"}->{"COMMAND"} =~ /\<HADOOP_HOME\>/) {
+            $step->{"CMD"}->{"COMMAND"} =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
+        }
+        if (not ((exists $step->{"COLLECT_NMON"}) and ($step->{"COLLECT_NMON"} eq "FALSE"))) {
+            print $script_fh <<EOF;
+# Stop/Start nmon
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ps -ef | grep nmon | grep -v grep | awk '{print \\\$2}' | xargs -i kill -9 \\{\\}"
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "nmon -f -s 5 -c 50000"
+EOF
+        }
+        print $script_fh <<EOF;
+CMD_TO_KILL="$step->{"CMD"}->{"COMMAND"}"
+EOF
+        $cmd = $cmd.$step->{"CMD"}->{"COMMAND"};
+        my $def_conf = 0;
+        if (exists $step->{"CMD"}->{"PARAM"}) {
+            foreach my $element (@{$step->{"CMD"}->{"PARAM"}}) {
+                if ($element =~ /\<HADOOP_HOME\>/) {
+                    $element =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
+                }
+                if ($element =~ /\<HADOOP_MASTER_IP\>/) {
+                    $element =~ s/\<HADOOP_MASTER_IP\>/$master_ip/;
+                }
+                $cmd = $cmd." ".$element;
+            }
+        }
+
+        print $script_fh <<EOF;
+echo \"TAG:$step->{"HADOOP"} COUNT:$repeat\" >> \$INFO
+for ITER in \$(seq $repeat)
+do
+EOF
+        if ($drop_cache_between_run == 1) {
+            print $script_fh <<EOF;
+    if [ \$ITER -ne 1 ] 
+    then
+        sync && echo 3 > /proc/sys/vm/drop_caches
+        grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh -l root {} "sync && echo 3 > /proc/sys/vm/drop_caches"
+    fi
+EOF
+        }
+        print $script_fh <<EOF;
+    export RUN_ID=\"$step->{"HADOOP"}-ITER\$ITER\"
+    CMD=\"${cmd}\"
+    CMD=\"\${CMD} > \$PMH/workload/spark/test_case/$script_dir/$step->{"HADOOP"}-ITER\$ITER.log 2>&1\"
+    export WORKLOAD_CMD=\${CMD}
+EOF
+        # For YARN scheduler, get the latest FINISHED/FAILED/KILLED application-id
+        if ($spark_conf->{"SCHEDULER"} eq "YARN") {
+            print $script_fh <<EOF;
+    # Get existing application-id infos
+    echo "FINISHED" > \$APPID
+    `\$PMH/workload/hive/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} FINISHED \$DEBUG >> \$APPID`;
+    echo "FAILED" >> \$APPID
+    `\$PMH/workload/hive/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} FAILED \$DEBUG >> \$APPID`;
+    echo "KILLED" >> \$APPID
+    `\$PMH/workload/hive/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} KILLED \$DEBUG >> \$APPID`;
+    echo "RUNNING" >> \$APPID
+    `\$PMH/workload/hive/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} RUNNING \$DEBUG >> \$APPID`;
+    \$PMH/workload/hive/scripts/query_yarn_app_id.pl \$APPID \$INFO $step->{"HADOOP"} \$ITER $spark_conf->{"HADOOP_HOME"} \$PMH/workload/hive/scripts \$DEBUG &
+EOF
+        }
+        print $script_fh <<EOF;
+    \${PMH}/run-workload.sh
+    DURATION=`grep "Elapsed (wall clock) time" \$RUNDIR/data/raw/$step->{"HADOOP"}-ITER\${ITER}_time_stdout.txt | awk -F"m:ss): " '{print \$2}' | awk -F: 'END { if (NF == 2) {sum=\$1*60+\$2} else {sum=\$1*3600+\$2*60+\$3} print sum}'`
+    echo \"TAG:$step->{"HADOOP"} ITER:\$ITER DURATION:\$DURATION\" >> \$INFO
+EOF
+        if (exists $step->{"AFTER"}) {
+            if ($step->{"AFTER"} =~ /\<HADOOP_HOME\>/) {
+                $step->{"AFTER"} =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
+            }
+            if ($step->{"AFTER"} =~ /\<SPARK_HOME\>/) {
+                $step->{"AFTER"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
+            }
+            print $script_fh <<EOF;
+    # AFTER command
+    $step->{"AFTER"}
+done
+
+EOF
+        } else {
+            print $script_fh <<EOF;
+done
+
+EOF
+        }
+        if (not ((exists $step->{"COLLECT_NMON"}) and ($step->{"COLLECT_NMON"} eq "FALSE"))) {
+            print $script_fh <<EOF;
+# Stop nmon and collect nmon logs
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ps -ef | grep nmon | grep -v grep | awk '{print \\\$2}' | xargs -i kill -9 \\{\\}"
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ls -lrt | tail -n 1 | awk '{print \\\$9}' | xargs -i scp \\{\\} $spark_conf->{"MASTER"}:\$RUNDIR/nmon/"
+
+EOF
+        }
     }
 }
 
