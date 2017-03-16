@@ -451,11 +451,11 @@ EOF
         if ($step->{"CMD"}->{"COMMAND"} =~ /\<SPARK_HOME\>/) {
             $step->{"CMD"}->{"COMMAND"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
         }
-        if ((exists $step->{"COLLECT_NMON"}) and ($step->{"COLLECT_NMON"} eq "TRUE")) {
+        if (not ((exists $step->{"COLLECT_NMON"}) and ($step->{"COLLECT_NMON"} eq "FALSE"))) {
             print $script_fh <<EOF;
 # Stop/Start nmon
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ps -ef | grep nmon | grep -v grep | awk '{print \\\$2}' | xargs -i kill -9 \\{\\}"
-grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "nmon -f -s 5 -c 10000"
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "nmon -f -s 5 -c 50000"
 EOF
         }
         print $script_fh <<EOF;
@@ -672,7 +672,7 @@ EOF
         }
         $last_worker_instances = $def_worker_instances;
         $last_worker_cores = $def_worker_cores;
-        if ((exists $step->{"COLLECT_NMON"}) and ($step->{"COLLECT_NMON"} eq "TRUE")) {
+        if (not ((exists $step->{"COLLECT_NMON"}) and ($step->{"COLLECT_NMON"} eq "FALSE"))) {
             print $script_fh <<EOF;
 # Stop nmon and collect nmon logs
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ps -ef | grep nmon | grep -v grep | awk '{print \\\$2}' | xargs -i kill -9 \\{\\}"
@@ -698,6 +698,43 @@ EOF
             $change_smt = 1;
         } elsif ($step->{"CHANGE_SMT"} eq "NO") {
             $change_smt = 0;
+        }
+    } elsif (exists $step->{"BATCH"}) {
+        print $script_fh <<EOF;
+## Batch script ##
+EOF
+
+        if (not ((exists $step->{"COLLECT_NMON"}) and ($step->{"COLLECT_NMON"} eq "FALSE"))) {
+            print $script_fh <<EOF;
+# Stop/Start nmon
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ps -ef | grep nmon | grep -v grep | awk '{print \\\$2}' | xargs -i kill -9 \\{\\}"
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "nmon -f -s 5 -c 50000"
+
+EOF
+        }
+        if ($step->{"CMD"} =~ /\<HADOOP_HOME\>/) {
+            $step->{"CMD"} =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
+        }
+        if ($step->{"CMD"} =~ /\<SPARK_HOME\>/) {
+            $step->{"CMD"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
+        }
+
+        print $script_fh <<EOF;
+export RUN_ID=\"$step->{"BATCH"}\"
+CMD=\"$step->{"CMD"}\"
+CMD=\"\${CMD} > \$PMH/workload/spark/test_case/$script_dir/$step->{"BATCH"}.log 2>&1\"
+export WORKLOAD_CMD=\${CMD}
+\${PMH}/run-workload.sh
+
+EOF
+
+        if (not ((exists $step->{"COLLECT_NMON"}) and ($step->{"COLLECT_NMON"} eq "FALSE"))) {
+            print $script_fh <<EOF;
+# Stop nmon and collect nmon logs
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ps -ef | grep nmon | grep -v grep | awk '{print \\\$2}' | xargs -i kill -9 \\{\\}"
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ls -lrt | tail -n 1 | awk '{print \\\$9}' | xargs -i scp \\{\\} $spark_conf->{"MASTER"}:\$RUNDIR/nmon/"
+
+EOF
         }
     }
 }

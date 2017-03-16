@@ -2,28 +2,30 @@
 use warnings;
 use strict;
 
-if ($#ARGV != 1) {
-    print "Usage: ./wget_mapreduce_job_history.pl <JOB_ID> <FOLDER>\n";
+if ($#ARGV != 3) {
+    print "Usage: ./wget_mapreduce_job_history.pl <MASTER_IP> <MR_HISTORY_PORT> <JOB_ID> <FOLDER>\n";
     exit 1;
 }
 
-my $job_id = $ARGV[0];
-my $tgt_folder = $ARGV[1];
-`rm -rf 9.40.201.122:19888`;
-`wget -r -l2 -R mapred-root-historyserver-master.log,job_*_* http://9.40.201.122:19888/jobhistory/tasks/$job_id/m/ > /tmp/web.log 2>&1`;
-`grep "200 OK" /tmp/web.log > /dev/null 2>&1`;
+my $master_ip = $ARGV[0];
+my $mr_history_port = $ARGV[1];
+my $job_id = $ARGV[3];
+my $tgt_folder = $ARGV[4];
+`rm -rf $master_ip:$mr_history_port`;
+`wget -r -l2 -R fairscheduler,*.out,*.out.*,*.log,*.log.*,SecurityAuth-test.audit,SecurityAuth-test.audit.*,userlogs,job_*_* http://$master_ip:$mr_history_port/jobhistory/tasks/$job_id/m/ > .web.log 2>&1`;
+`grep "200 OK" .web.log > /dev/null 2>&1`;
 if ($? != 0) {
-    `rm -rf 9.40.201.122:19888`;
+    `rm -rf $master_ip:$mr_history_port`;
     exit 1;
 }
 `mkdir $tgt_folder/$job_id`;
 if ($? != 0) {
-    `rm -rf 9.40.201.122:19888`;
+    `rm -rf $master_ip:$mr_history_port`;
     exit 1;
 }
-`mv 9.40.201.122:19888 $tgt_folder/$job_id/map > /dev/null 2>&1`;
+`mv $master_ip:$mr_history_port $tgt_folder/$job_id/map > /dev/null 2>&1`;
 
-`wget -r -l2 -R mapred-root-historyserver-master.log,job_*_* http://9.40.201.122:19888/jobhistory/tasks/$job_id/r/ > /tmp/web.log 2>&1`;
-`mv 9.40.201.122:19888 $tgt_folder/$job_id/reduce > /dev/null 2>&1`;
+`wget -r -l2 -R fairscheduler,*.out,*.out.*,*.log,*.log.*,SecurityAuth-test.audit,SecurityAuth-test.audit.*,userlogs,job_*_* http://$master_ip:$mr_history_port/jobhistory/tasks/$job_id/r/ > .web.log 2>&1`;
+`mv $master_ip:$mr_history_port $tgt_folder/$job_id/reduce > /dev/null 2>&1`;
 
 exit 0;
