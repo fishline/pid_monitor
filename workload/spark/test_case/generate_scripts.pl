@@ -822,7 +822,7 @@ EOF
     `\$PMH/workload/hive/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} KILLED \$DEBUG >> \$APPID`;
     echo "RUNNING" >> \$APPID
     `\$PMH/workload/hive/scripts/query_yarn_app_id_in_some_state.pl $spark_conf->{"HADOOP_HOME"} RUNNING \$DEBUG >> \$APPID`;
-    \$PMH/workload/hive/scripts/query_yarn_app_id.pl \$APPID \$INFO $step->{"HADOOP"} \$ITER $spark_conf->{"HADOOP_HOME"} \$PMH/workload/hive/scripts \$DEBUG &
+    \$PMH/workload/spark/scripts/query_yarn_app_id.pl \$APPID \$INFO $step->{"HADOOP"} \$ITER $spark_conf->{"HADOOP_HOME"} \$PMH/workload/hive/scripts \$DEBUG &
 EOF
         }
         print $script_fh <<EOF;
