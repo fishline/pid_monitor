@@ -718,6 +718,9 @@ EOF
         if ($step->{"CMD"} =~ /\<SPARK_HOME\>/) {
             $step->{"CMD"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
         }
+        if ($step->{"CMD"} =~ /\<RUN_HOME\>/) {
+            $step->{"CMD"} =~ s/\<RUN_HOME\>/\$PMH\/workload\/spark\/test_case\/$script_dir/;
+        }
 
         print $script_fh <<EOF;
 export RUN_ID=\"$step->{"BATCH"}\"
