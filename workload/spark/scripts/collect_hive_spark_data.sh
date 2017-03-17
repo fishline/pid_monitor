@@ -2,7 +2,7 @@
 
 if [ "$#" -ne 2 ]
 then
-    echo "Usage: ./collect_hive_data.sh <Start time: e.g. \"2017/03/13 10:30:00\"> <Stop time>"
+    echo "Usage: ./collect_hive_spark_data.sh <Start time: e.g. \"2017/03/13 10:30:00\"> <Stop time>"
     exit 1
 fi
 
@@ -11,8 +11,8 @@ SECOND_HALF=`echo $2 | tr '\/' '_' | tr ':' '-' | tr ' ' '-'`
 FOLDER=./${FIRST_HALF}--${SECOND_HALF}
 mkdir $FOLDER
 
-BEGIN_TIME=`date --date="$2" +"%s"`
-END_TIME=`date --date="$3" +"%s"`
+BEGIN_TIME=`date --date="$1" +"%s"`
+END_TIME=`date --date="$2" +"%s"`
 
 # Handle MR history
 rm -f app
