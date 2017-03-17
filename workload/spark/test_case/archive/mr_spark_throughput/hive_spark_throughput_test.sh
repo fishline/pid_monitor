@@ -13,6 +13,8 @@ DB_JAR=$3
 SCALA_PATH=$4
 FOLDER=$5
 REQ_NUM=$6
+SPARK_REQ_DELTA=`expr $REQ_NUM \/ 5`
+SPARK_REQ=`expr $REQ_NUM \- $SPARK_REQ_DELTA`
 
 for i in `seq 15`
 do
@@ -26,7 +28,7 @@ done
 
 for i in `seq 10`
 do
-    ${PMH}/workload/spark/scripts/spark_user.sh $SPARK_HOME $DB_JAR $SCALA_PATH sql_20g ${REQ_NUM} ${FOLDER} &
+    ${PMH}/workload/spark/scripts/spark_user.sh $SPARK_HOME $DB_JAR $SCALA_PATH sql_20g ${SPARK_REQ} ${FOLDER} &
 done
 
 wait
