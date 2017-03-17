@@ -15,13 +15,7 @@ my %host_map_count = ();
 my %host_map_ms_total = ();
 my %host_map_CPU_time_total = ();
 my %map_host = ();
-my $queue = "";
-`grep $job_name $job_folder/map/jobhistory/app | grep -w default`;
-if ($? == 0) {
-    $queue = `grep $job_name $job_folder/map/jobhistory/app | awk -F, '{print \$7}' | awk -F\\\" '{print \$2}'`;
-} else {
-    $queue = `grep $job_name $job_folder/map/jobhistory/app | awk -F, '{print \$6}' | awk -F\\\" '{print \$2}'`;
-}
+my $queue = `grep $job_name $job_folder/map/jobhistory/app | awk -F\\\" '{print \$12}'`;
 chomp($queue);
 opendir (DIR, "$job_folder/map/jobhistory/task/") or die $!;
 while (my $file = readdir(DIR)) {
