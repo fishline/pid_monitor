@@ -14,7 +14,7 @@ BEGIN_TIME=`date --date="$1" +"%s"`
 END_TIME=`date --date="$2" +"%s"`
 
 # Handle MR history
-cd $FOLDER
+cd ./${FIRST_HALF}--${SECOND_HALF}
 FOLDER=./
 rm -f app
 MASTER=`ip route show | grep ^default | awk '{print $5}' | xargs -i ifconfig {} | grep netmask | awk '{print $2}'`
@@ -28,6 +28,7 @@ while [ $PAGE -lt 1000 ]
 do
     rm -f index.html
     wget http://${MASTER}:18080/?page=${PAGE}\&showIncomplete=false -O index.html > /dev/null 2>&1
+    pwd
     ../../../../spark/scripts/filter_history.pl "$1" "$2" index.html | xargs -i \cp /tmp/sparkLogs/{} $FOLDER/
     PAGE=`expr $PAGE \+ 1`
     ts=`grep "sorttable_customkey" index.html | sed -n 2p | awk -F\" '{print \$2}'`
