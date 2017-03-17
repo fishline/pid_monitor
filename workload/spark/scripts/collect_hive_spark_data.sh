@@ -19,7 +19,7 @@ FOLDER=./
 rm -f app
 MASTER=`ip route show | grep ^default | awk '{print $5}' | xargs -i ifconfig {} | grep netmask | awk '{print $2}'`
 wget http://${MASTER}:19888/jobhistory/app > /dev/null 2>&1
-../../../hive/scripts/filter_history.pl "$1" "$2" app | xargs -i ../../../hive/scripts/wget_mapreduce_job_history.pl ${MASTER} 19888 {} $FOLDER
+../../../../hive/scripts/filter_history.pl "$1" "$2" app | xargs -i ../../../../hive/scripts/wget_mapreduce_job_history.pl ${MASTER} 19888 {} $FOLDER
 rm -f app
 
 # Handle Spark history
@@ -28,7 +28,7 @@ while [ $PAGE -lt 1000 ]
 do
     rm -f index.html
     wget http://${MASTER}:18080/?page=${PAGE}\&showIncomplete=false -O index.html > /dev/null 2>&1
-    ../../../spark/scripts/filter_history.pl "$1" "$2" index.html | xargs -i \cp /tmp/sparkLogs/{} $FOLDER/
+    ../../../../spark/scripts/filter_history.pl "$1" "$2" index.html | xargs -i \cp /tmp/sparkLogs/{} $FOLDER/
     PAGE=`expr $PAGE \+ 1`
     ts=`grep "sorttable_customkey" index.html | sed -n 2p | awk -F\" '{print \$2}'`
     ts=`expr $ts \/ 1000`
@@ -44,7 +44,7 @@ echo "Test duration: $DELTA sec" > ${FOLDER}/result.log
 
 # Dump hive data
 rm -f ${FOLDER}/stats.log
-ls ${FOLDER} | grep ^job_ | xargs -i ../../../hive/scripts/mapreduce_statistics_hadoop220.pl ${FOLDER}/{} >> ${FOLDER}/stats.log
+ls ${FOLDER} | grep ^job_ | xargs -i ../../../../hive/scripts/mapreduce_statistics_hadoop220.pl ${FOLDER}/{} >> ${FOLDER}/stats.log
 
 echo "hive MAP_COUNT:" >> ${FOLDER}/result.log
 for host in `cat ${FOLDER}/stats.log | awk '{print \$1}' | sort -n | uniq | awk -F: '{print \$2}'`
