@@ -8,13 +8,14 @@ fi
 
 FIRST_HALF=`echo $1 | tr '\/' '_' | tr ':' '-' | tr ' ' '-'`
 SECOND_HALF=`echo $2 | tr '\/' '_' | tr ':' '-' | tr ' ' '-'`
-FOLDER=./${FIRST_HALF}--${SECOND_HALF}
-mkdir $FOLDER
+mkdir ./${FIRST_HALF}--${SECOND_HALF}
 
 BEGIN_TIME=`date --date="$1" +"%s"`
 END_TIME=`date --date="$2" +"%s"`
 
 # Handle MR history
+cd $FOLDER
+FOLDER=./
 rm -f app
 MASTER=`ip route show | grep ^default | awk '{print $5}' | xargs -i ifconfig {} | grep netmask | awk '{print $2}'`
 wget http://${MASTER}:19888/jobhistory/app > /dev/null 2>&1
@@ -122,5 +123,6 @@ done
 
 rm -rf ${FOLDER}/job_*
 rm -rf ${FOLDER}/application_*
+cd ../
 
 exit 0
