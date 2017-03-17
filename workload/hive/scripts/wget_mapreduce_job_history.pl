@@ -9,8 +9,8 @@ if ($#ARGV != 3) {
 
 my $master_ip = $ARGV[0];
 my $mr_history_port = $ARGV[1];
-my $job_id = $ARGV[3];
-my $tgt_folder = $ARGV[4];
+my $job_id = $ARGV[2];
+my $tgt_folder = $ARGV[3];
 `rm -rf $master_ip:$mr_history_port`;
 `wget -r -l2 -R fairscheduler,*.out,*.out.*,*.log,*.log.*,SecurityAuth-test.audit,SecurityAuth-test.audit.*,userlogs,job_*_* http://$master_ip:$mr_history_port/jobhistory/tasks/$job_id/m/ > .web.log 2>&1`;
 `grep "200 OK" .web.log > /dev/null 2>&1`;

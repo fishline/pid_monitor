@@ -16,7 +16,7 @@ END_TIME=`date --date="$3" +"%s"`
 
 # Handle MR history
 rm -f app
-MASTER=`hostname`
+MASTER=`ip route show | grep ^default | awk '{print $5}' | xargs -i ifconfig {} | grep netmask | awk '{print $2}'`
 wget http://${MASTER}:19888/jobhistory/app > /dev/null 2>&1
 ../../../hive/scripts/filter_history.pl "$1" "$2" app | xargs -i ../../../hive/scripts/wget_mapreduce_job_history.pl ${MASTER} 19888 {} $FOLDER
 rm -f app
