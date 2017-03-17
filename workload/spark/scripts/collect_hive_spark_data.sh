@@ -28,7 +28,6 @@ while [ $PAGE -lt 1000 ]
 do
     rm -f index.html
     wget http://${MASTER}:18080/?page=${PAGE}\&showIncomplete=false -O index.html > /dev/null 2>&1
-    pwd
     ../../../../spark/scripts/filter_history.pl "$1" "$2" index.html | xargs -i \cp /tmp/sparkLogs/{} $FOLDER/
     PAGE=`expr $PAGE \+ 1`
     ts=`grep "sorttable_customkey" index.html | sed -n 2p | awk -F\" '{print \$2}'`
