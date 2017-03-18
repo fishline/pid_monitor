@@ -232,6 +232,7 @@ CMD_TO_KILL=""
 SMT_NEED_RESET=0
 trap ctrl_c_exit INT
 
+export SPARK_HOME=$spark_conf->{"SPARK_HOME"}
 export HADOOP_HOME=$spark_conf->{"HADOOP_HOME"}
 export HADOOP_CONF_DIR=$spark_conf->{"HADOOP_HOME"}/etc/hadoop
 export PMH=$pmh
@@ -240,6 +241,7 @@ export DESCRIPTION="$script_dir"
 export WORKLOAD_DIR="."      # The workload working directory
 export MEAS_DELAY_SEC=1      # Delay between each measurement
 export RUNDIR=\$(\${PMH}/setup-run.sh \$WORKLOAD_NAME)
+export MASTER=$spark_conf->{"MASTER"}
 mkdir \$RUNDIR/spark_events
 mkdir \$RUNDIR/nmon
 INFO=\$PMH/workload/spark/test_case/$script_dir/info
