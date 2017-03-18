@@ -13,6 +13,11 @@
                 "<PMH>/workload/spark/scripts/spark_event_log_web_link.pl",
                 "<INFO>",
                 "<TAG>"
+            ],
+            "log_analysis" : [
+                "<PMH>/workload/spark/scripts/spark_event_log_analysis.pl",
+                "<INFO>",
+                "<TAG>"
             ]
         }
     },
