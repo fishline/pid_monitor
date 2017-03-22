@@ -11,7 +11,8 @@ create table os_order
 ,     t           string                         
 ,     dummy       string                       
 )
-stored as orc;
+stored as textfile;
+-- orc does not work with lzo, store as eith "orc" or "textfile"
 
 insert overwrite table os_order 
 select

@@ -15,4 +15,6 @@ set hive.support.concurrency=false;
 set hive.txn.manager=org.apache.hadoop.hive.ql.lockmgr.DummyTxnManager;
 
 SET hive.exec.compress.output=true;
+SET mapreduce.output.fileoutputformat.compress=true;
 SET mapred.output.compression.codec=com.hadoop.compression.lzo.LzoCodec;
+SET mapreduce.output.fileoutputformat.compress.codec=com.hadoop.compression.lzo.LzoCodec;

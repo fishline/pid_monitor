@@ -13,7 +13,7 @@ create table os_order_item
 ,     gsell       float                       
 ,     dummy       string                       
 )
-stored as orc;
+stored as textfile; 
 
 insert overwrite table os_order_item
 select
