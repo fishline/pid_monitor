@@ -18,7 +18,7 @@ EXEC_MEM=$8
 for i in `seq ${NUM_SEQ_REQ}`
 do
     SCRIPT_SEQ=`shuf -i 1-${MAX_SCRIPT_IDX} -n 1`
-    DB_IDX=`shuf -i 1-10 -n 1`
+    DB_IDX=`shuf -i 1-20 -n 1`
     export DB_NAME=${DB_BASENAME}_${DB_IDX}
     begin_time=`date +%s`
 

@@ -11,7 +11,7 @@ HIVE_DB=$2
 TEXT_DB=${HIVE_DB}_text
 
 hive -i load-flat.sql -f alltables.sql -d DB=${TEXT_DB} -d LOCATION=${HDFS_LOC}
-for i in `seq 10`
+for i in `seq 11 20`
 do
     hive -i load-partitioned.sql -f os_order.sql -d DB=${HIVE_DB}_${i} -d SOURCE=${TEXT_DB}
     hive -i load-partitioned.sql -f os_order_item.sql -d DB=${HIVE_DB}_${i} -d SOURCE=${TEXT_DB}
