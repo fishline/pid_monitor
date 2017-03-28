@@ -16,27 +16,20 @@ REQ_NUM=$6
 SPARK_REQ_DELTA=`expr $REQ_NUM \/ 5`
 SPARK_REQ=`expr $REQ_NUM \- $SPARK_REQ_DELTA`
 
-for i in `seq 15`
+for i in `seq 20`
 do
     ${PMH}/workload/hive/scripts/hive_user.sh $SCALA_PATH sql_20g ${REQ_NUM} ${FOLDER} &
 done
 
-for i in `seq 10`
+for i in `seq 15`
 do
     ${PMH}/workload/hive/scripts/hive_user.sh $SCALA_PATH sql_70g ${REQ_NUM} ${FOLDER} &
-done
-
-for i in `seq 10`
-do
-    ${PMH}/workload/spark/scripts/spark_user.sh $SPARK_HOME $DB_JAR $SCALA_PATH sql_20g ${SPARK_REQ} ${FOLDER} &
 done
 
 # sleep for 2hours, after that kill jobs and exit
 sleep 7200
 ps -ef | grep hive_user | grep pid_monitor | awk '{print $2}' | xargs -i kill -9 {}
-ps -ef | grep spark_user | grep pid_monitor | awk '{print $2}' | xargs -i kill -9 {}
 yarn application -list 2>&1 | grep "^application" | awk '{print $1}' | xargs -i yarn application -kill {}
 jps | grep RunJar | awk '{print $1}' | xargs -i kill -9 {}
-jps | grep SparkSubmit | awk '{print $1}' | xargs -i kill -9 {}
 
 exit 0
