@@ -75,9 +75,9 @@ object PowerNodeStatistics extends Logging {
             tasks(data(0).toLong, data(1).toInt)
         }.toDF.registerTempTable("power")
 
-        val powerRdd2 = sqlContext.sql(s"select ts,sum(duration_ts)/count(*) as power from power join timestamps on (power.start_ts >= timestamps.ts and power.start_ts < (timestamps.ts + $period)) group by ts order by ts").toDF.registerTempTable("power_tmp")
-        sqlContext.sql("select result_tmp2.descrip, mr_count, scala_count, spsql_count, power from result_tmp2 full outer join power_tmp on result_tmp2.ts = power_tmp.ts order by result_tmp2.ts").toDF.registerTempTable("result_tmp3")
-        sqlContext.sql("select descrip, case when isnull(mr_count) then 0 else mr_count end as mr_count, case when isnull(scala_count) then 0 else scala_count end as scala_count, case when isnull(spsql_count) then 0 else spsql_count end as spsql_count, power from result_tmp3").toDF.registerTempTable("result")
+        val powerRdd2 = sqlContext.sql(s"select ts,sum(duration_ts)/count(*) as power_avg, min(duration_ts) as power_min, max(duration_ts) as power_max from power join timestamps on (power.start_ts >= timestamps.ts and power.start_ts < (timestamps.ts + $period)) group by ts order by ts").toDF.registerTempTable("power_tmp")
+        sqlContext.sql("select result_tmp2.descrip, mr_count, scala_count, spsql_count, power_min, power_avg, power_max from result_tmp2 full outer join power_tmp on result_tmp2.ts = power_tmp.ts order by result_tmp2.ts").toDF.registerTempTable("result_tmp3")
+        sqlContext.sql("select descrip, case when isnull(mr_count) then 0 else mr_count end as mr_count, case when isnull(scala_count) then 0 else scala_count end as scala_count, case when isnull(spsql_count) then 0 else spsql_count end as spsql_count, power_min, power_avg, power_max from result_tmp3").toDF.registerTempTable("result")
         sqlContext.sql("select * from result").show(500, false)
 
         sc.stop()
