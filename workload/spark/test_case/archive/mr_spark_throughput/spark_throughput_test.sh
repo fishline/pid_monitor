@@ -30,7 +30,7 @@ do
 done
 
 # sleep for 2hours, after that kill jobs and exit
-sleep 7200
+sleep 5400
 ps -ef | grep spark_sql_app | grep pid_monitor | awk '{print $2}' | xargs -i kill -9 {}
 yarn application -list 2>&1 | grep "^application" | awk '{print $1}' | xargs -i yarn application -kill {}
 jps | grep SparkSubmit | awk '{print $1}' | xargs -i kill -9 {}
