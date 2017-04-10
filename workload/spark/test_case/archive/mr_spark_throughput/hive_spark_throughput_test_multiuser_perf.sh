@@ -44,6 +44,15 @@ do
     ${PMH}/workload/spark/scripts/spark_sql_app_multi_user.sh $SPARK_HOME $DB_JAR $APP_JAR sql_140g ${REQ_NUM} ${FOLDER} 1 4g ${MAX_USER} ${MAX_APPS} &
 done
 
-wait
+sleep 5400
+ps -ef | grep hive_spark | awk '{print $2}' | xargs -i kill -9 {}
+ps -ef | grep hive_multi | awk '{print $2}' | xargs -i kill -9 {}
+ps -ef | grep spark_sql | awk '{print $2}' | xargs -i kill -9 {}
+ps -ef | grep "master hive" | awk '{print $2}' | xargs -i kill -9 {}
+
+ssh -l root master "ps -ef | grep \"hive --database\" | awk '{print \$2}' | xargs -i kill -9 {}"
+ssh -l root master "ps -ef | grep \"hive\" | awk '{print \$2}' | xargs -i kill -9 {}"
+ssh -l root master "ps -ef | grep \"spark-submit\" | awk '{print \$2}' | xargs -i kill -9 {}"
+ssh -l root master "ps -ef | grep SparkQuery | awk '{print \$2}' | xargs -i kill -9 {}"
 
 exit 0
