@@ -1,0 +1,41 @@
+[
+    {
+        "USE" : "sql-gen-conf.json"
+    },
+    {
+        "SUMMARY" : {
+            "median_sec" : [
+                "<PMH>/workload/spark/scripts/spark_event_log_median_sec.pl",
+                "<INFO>",
+                "<TAG>"
+            ],
+            "spark_event_log" : [
+                "<PMH>/workload/spark/scripts/spark_event_log_web_link.pl",
+                "<INFO>",
+                "<TAG>"
+            ]
+        }
+    },
+    {
+        "TAG" : "sql-gen",
+        "CMD" : {
+            "COMMAND" : "<SPARK_HOME>/bin/spark-submit",
+            "EXECUTOR_PER_DN" : 5,
+            "EXECUTOR_VCORES" : 2,
+            "EXECUTOR_MEM" : "4g",
+            "DRIVER_MEM" : "4g",
+            "PARAM" : [
+                {
+                    "--conf" : [
+                        "spark.executor.extraJavaOptions=\\\"-XX:ParallelGCThreads=4 -XX:+AlwaysTenure\\\""
+                    ]
+                },
+                "--class src.main.scala.SQLGen",
+                "/home/test/pid_monitor/workload/spark/resources/sqlgen/target/scala-2.10/sqlgen-app_2.10-1.0.jar",
+                "400000000 hdfs://10.10.10.10/sql_70g 30"
+            ]
+        },
+        "REPEAT" : 1,
+        "DROP_CACHE_BETWEEN_REPEAT" : "FALSE"
+    }
+]
