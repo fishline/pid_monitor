@@ -17,7 +17,7 @@ do
     DB_IDX=`shuf -i 1-20 -n 1`
     begin_time=`date +%s`
 
-    sleep `shuf -i 1-90 -n 1`
+    sleep `shuf -i 1-45 -n 1`
     hive --database ${DB_BASENAME}_${DB_IDX} -f ${SQL_PATH}/hive${SCRIPT_SEQ}.sql > /dev/null 2>&1
 
     end_time=`date +%s`

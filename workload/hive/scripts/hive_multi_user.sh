@@ -17,7 +17,7 @@ do
     SCRIPT_SEQ=`shuf -i 1-${MAX_SCRIPT_IDX} -n 1`
     DB_IDX=`shuf -i 1-20 -n 1`
     begin_time=`date +%s`
-    HEAP_SIZE=`shuf -e 1024 1664 2048 2816 8192 -n 1`
+    HEAP_SIZE=`shuf -e 2048 2816 4096 8192 -n 1`
     USER_IDX=`shuf -i 1-${MAX_USER} -n 1`
     RATIO=`shuf -i 1-100 -n 1`
     if [ $RATIO -lt 70 ]
