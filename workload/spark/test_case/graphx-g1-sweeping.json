@@ -17,15 +17,13 @@
         }
     },
     {
-        "SWEEPING" : "graphx-g1-sweeping",
+        "SWEEPING" : "graphx-g1-sweeping1",
         "SWEEPING_PARAMS" : {
             "-XX:G1HeapRegionSize=" : [ "4m", "8m", "16m", "32m" ],
             "-XX:MaxGCPauseMillis=" : [ "100", "200", "300" ],
-            "-XX:ParallelGCThreads=" : [ "2", "4", "8" ],
             "-XX:InitiatingHeapOccupancyPercent=" : [ "35", "45", "55" ],
             "-XX:G1HeapWastePercent=" : [ "5", "10", "15" ],
             "-XX:G1MixedGCCountTarget=" : [ "4", "8", "12" ],
-            "-XX:G1OldCSetRegionThresholdPercent=" : [ "5", "10", "15" ],
             "-XX:G1ReservePercent=" : [ "5", "10", "15" ]
         },
         "SWEEPING_METRIC" : [
@@ -37,12 +35,12 @@
             "COMMAND" : "<SPARK_HOME>/bin/spark-submit",
             "EXECUTOR_PER_DN" : 3,
             "EXECUTOR_VCORES" : 4,
-            "EXECUTOR_MEM" : "6g",
+            "EXECUTOR_MEM" : "4g",
             "DRIVER_MEM" : "6g",
             "PARAM" : [
                 {
                     "--conf" : [
-                        "spark.executor.extraJavaOptions=\\\"-verbose:gc -server -Djava.net.preferIPv4Stack=true -XX:+UseG1GC SWEEPING_PARAMS -XX:+DisableExplicitGC -XX:+PrintGC -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCTimeStamps\\\"",
+                        "spark.executor.extraJavaOptions=\\\"-verbose:gc -server -Djava.net.preferIPv4Stack=true -XX:+UseG1GC SWEEPING_PARAMS -XX:ParallelGCThreads=4 -XX:+DisableExplicitGC -XX:+PrintGC -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCTimeStamps\\\"",
                         "spark.network.timeout=300",
                         "spark.scheduler.mode=FIFO",
                         "spark.serializer=org.apache.spark.serializer.KryoSerializer",
@@ -61,11 +59,112 @@
                 },
                 "--class src.main.scala.CommonFriends",
                 "/home/test/pid_monitor/workload/spark/resources/graphx/target/scala-2.10/graphx-app_2.10-1.0.jar",
-                "hdfs://10.10.10.10/graphx_input3 hdfs://10.10.10.10/graphx_output 800"
+                "hdfs://10.10.10.10/graphx_input4 hdfs://10.10.10.10/graphx_output 100"
+            ]
+        },
+        "REPEAT" : 1,
+        "DROP_CACHE_BETWEEN_REPEAT" : "TRUE",
+        "AFTER" : "<HADOOP_HOME>/bin/hadoop fs -rmr -skipTrash /graphx_output"
+    },
+    {
+        "SWEEPING" : "graphx-g1-sweeping2",
+        "SWEEPING_PARAMS" : {
+            "-XX:G1HeapRegionSize=" : [ "4m", "8m", "16m", "32m" ],
+            "-XX:MaxGCPauseMillis=" : [ "100", "200", "300" ],
+            "-XX:InitiatingHeapOccupancyPercent=" : [ "35", "45", "55" ],
+            "-XX:G1HeapWastePercent=" : [ "5", "10", "15" ],
+            "-XX:G1MixedGCCountTarget=" : [ "4", "8", "12" ],
+            "-XX:G1ReservePercent=" : [ "5", "10", "15" ]
+        },
+        "SWEEPING_METRIC" : [
+            "<PMH>/workload/spark/scripts/spark_event_log_median_sec.pl",
+            "<INFO>",
+            "<TAG>"
+        ],
+        "CMD" : {
+            "COMMAND" : "<SPARK_HOME>/bin/spark-submit",
+            "EXECUTOR_PER_DN" : 3,
+            "EXECUTOR_VCORES" : 4,
+            "EXECUTOR_MEM" : "4g",
+            "DRIVER_MEM" : "6g",
+            "PARAM" : [
+                {
+                    "--conf" : [
+                        "spark.executor.extraJavaOptions=\\\"-verbose:gc -server -Djava.net.preferIPv4Stack=true -XX:+UseG1GC SWEEPING_PARAMS -XX:ParallelGCThreads=4 -XX:+DisableExplicitGC -XX:+PrintGC -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCTimeStamps\\\"",
+                        "spark.network.timeout=300",
+                        "spark.scheduler.mode=FIFO",
+                        "spark.serializer=org.apache.spark.serializer.KryoSerializer",
+                        "spark.shuffle.service.enabled=true",
+                        "spark.akka.threads=8",
+                        "spark.hadoop.validateOutputSpecs=false",
+                        "spark.hadoop.fs.hdfs.impl.disable.cache=false",
+                        "spark.reducer.maxSizeInFlight=128m",
+                        "spark.kryoserializer.buffer.max=512m",
+                        "spark.storage.memoryFraction=0.4",
+                        "spark.kryoserializer.buffer=512k",
+                        "spark.shuffle.memoryFraction=0.4",
+                        "spark.shuffle.consolidateFiles=true",
+                        "spark.memory.useLegacyMode=true"
+                    ]
+                },
+                "--class src.main.scala.CommonFriends",
+                "/home/test/pid_monitor/workload/spark/resources/graphx/target/scala-2.10/graphx-app_2.10-1.0.jar",
+                "hdfs://10.10.10.10/graphx_input4 hdfs://10.10.10.10/graphx_output 100"
+            ]
+        },
+        "REPEAT" : 1,
+        "DROP_CACHE_BETWEEN_REPEAT" : "TRUE",
+        "AFTER" : "<HADOOP_HOME>/bin/hadoop fs -rmr -skipTrash /graphx_output"
+    },
+    {
+        "SWEEPING" : "graphx-g1-sweeping3",
+        "SWEEPING_PARAMS" : {
+            "-XX:G1HeapRegionSize=" : [ "4m", "8m", "16m", "32m" ],
+            "-XX:MaxGCPauseMillis=" : [ "100", "200", "300" ],
+            "-XX:InitiatingHeapOccupancyPercent=" : [ "35", "45", "55" ],
+            "-XX:G1HeapWastePercent=" : [ "5", "10", "15" ],
+            "-XX:G1MixedGCCountTarget=" : [ "4", "8", "12" ],
+            "-XX:G1ReservePercent=" : [ "5", "10", "15" ]
+        },
+        "SWEEPING_METRIC" : [
+            "<PMH>/workload/spark/scripts/spark_event_log_median_sec.pl",
+            "<INFO>",
+            "<TAG>"
+        ],
+        "CMD" : {
+            "COMMAND" : "<SPARK_HOME>/bin/spark-submit",
+            "EXECUTOR_PER_DN" : 3,
+            "EXECUTOR_VCORES" : 4,
+            "EXECUTOR_MEM" : "3g",
+            "DRIVER_MEM" : "6g",
+            "PARAM" : [
+                {
+                    "--conf" : [
+                        "spark.executor.extraJavaOptions=\\\"-verbose:gc -server -Djava.net.preferIPv4Stack=true -XX:+UseG1GC SWEEPING_PARAMS -XX:ParallelGCThreads=4 -XX:+DisableExplicitGC -XX:+PrintGC -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCTimeStamps\\\"",
+                        "spark.network.timeout=300",
+                        "spark.scheduler.mode=FIFO",
+                        "spark.serializer=org.apache.spark.serializer.KryoSerializer",
+                        "spark.shuffle.service.enabled=true",
+                        "spark.akka.threads=8",
+                        "spark.hadoop.validateOutputSpecs=false",
+                        "spark.hadoop.fs.hdfs.impl.disable.cache=false",
+                        "spark.reducer.maxSizeInFlight=128m",
+                        "spark.kryoserializer.buffer.max=512m",
+                        "spark.storage.memoryFraction=0.4",
+                        "spark.kryoserializer.buffer=512k",
+                        "spark.shuffle.memoryFraction=0.4",
+                        "spark.shuffle.consolidateFiles=true",
+                        "spark.memory.useLegacyMode=true"
+                    ]
+                },
+                "--class src.main.scala.CommonFriends",
+                "/home/test/pid_monitor/workload/spark/resources/graphx/target/scala-2.10/graphx-app_2.10-1.0.jar",
+                "hdfs://10.10.10.10/graphx_input4 hdfs://10.10.10.10/graphx_output 100"
             ]
         },
         "REPEAT" : 1,
         "DROP_CACHE_BETWEEN_REPEAT" : "TRUE",
         "AFTER" : "<HADOOP_HOME>/bin/hadoop fs -rmr -skipTrash /graphx_output"
     }
+
 ]

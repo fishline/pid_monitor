@@ -30,7 +30,7 @@ foreach my $l (@lines) {
             if ($? != 0) {
                 open DEBUG, ">> $debug_fn" or die "Cannot open file $debug_fn for append";
                 print DEBUG "spark_event_log_median_sec.pl $info_fn $tag\n";
-                print DEBUG "Got spark eventlog failed, but yarn application -list shows finished\n\n";
+                print DEBUG "Got spark eventlog failed, not found\n\n";
                 close DEBUG;
             } else {
                 chomp($duration);

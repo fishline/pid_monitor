@@ -295,7 +295,7 @@ foreach my $step (@{$scenario}) {
         $sweeping = 1;
         print $script_fh <<EOF;
 # SWEEPING configurations
-\$PMH/workload/spark/scripts/sweeping_spark.pl \$PMH/workload/spark/test_case/$script_dir $test_plan_fn $step->{"SWEEPING"} \$RUNDIR
+\$PMH/workload/spark/scripts/sweeping_spark.pl \$PMH/workload/spark/test_case/$script_dir $test_plan_fn $step->{"SWEEPING"} \$RUNDIR \$PMH
 
 EOF
         close $script_fh;
@@ -303,7 +303,7 @@ EOF
 
         # Print usage etc.
         my $sweeping_key_cnt = keys %{$step->{"SWEEPING_PARAMS"}};
-        $sweeping_key_cnt = $sweeping_key_cnt + 2;
+        $sweeping_key_cnt = $sweeping_key_cnt + 1;
         my $key_str = "";
         my $idx = 2;
         $tag = $step->{"SWEEPING"};
