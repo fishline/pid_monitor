@@ -151,14 +151,14 @@ WORKLOAD_STDERR=$RUNDIR/data/raw/${RUN_ID}_workload_stderr.txt
 ###############################################################################
 # STEP 2: START MONITORS USING SSH
 CWD=$(pwd)
-for SLAVE in $SLAVES
-do
-    debug_message "Collecting system snapshot on $SLAVE"
-    # Gather system summary
-    bash -c "./system_snapshot.sh $SLAVE && mv ${SLAVE}.html $RUNDIR/html/." &
-    sleep 0.1
-done
-wait
+#for SLAVE in $SLAVES
+#do
+#    debug_message "Collecting system snapshot on $SLAVE"
+#    # Gather system summary
+#    bash -c "./system_snapshot.sh $SLAVE && mv ${SLAVE}.html $RUNDIR/html/." &
+#    sleep 0.1
+#done
+#wait
 
 for SLAVE in $SLAVES
 do
