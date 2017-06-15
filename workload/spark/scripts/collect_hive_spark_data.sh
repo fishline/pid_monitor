@@ -43,7 +43,7 @@ DELTA=`expr $END_TIME \- $BEGIN_TIME`
 echo "Test duration: $DELTA sec" > ${FOLDER}/result.log
 
 # Dump hive data
-rm -f ${FOLDER}/stats.log
+#rm -f ${FOLDER}/stats.log
 ls ${FOLDER} | grep ^job_ | xargs -i ../../../../hive/scripts/mapreduce_statistics_hadoop220.pl ${FOLDER}/{} >> ${FOLDER}/stats.log
 
 echo "hive MAP_COUNT:" >> ${FOLDER}/result.log
@@ -122,7 +122,7 @@ do
 done
 
 rm -rf ${FOLDER}/job_*
-rm -rf ${FOLDER}/application_*
+#rm -rf ${FOLDER}/application_*
 cd ../
 
 exit 0

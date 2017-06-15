@@ -16,14 +16,16 @@ MAX_SCRIPT_IDX=8
 for i in `seq ${NUM_SEQ_REQ}`
 do
     SCRIPT_SEQ=`shuf -i 1-${MAX_SCRIPT_IDX} -n 1`
-    DB_IDX=`shuf -i 1-20 -n 1`
+    DB_IDX=`shuf -i 1-10 -n 1`
     export DB_NAME=${DB_BASENAME}_${DB_IDX}
     begin_time=`date +%s`
 
     sleep `shuf -i 1-45 -n 1`
+    CORE_N=1
     #sleep `shuf -i 1-20 -n 1`
     #${SPARK_HOME}/bin/spark-shell --master yarn --num-executors 1 --executor-cores 1 --executor-memory 2g --driver-memory 4g --conf spark.executor.extraJavaOptions="-XX:MaxPermSize=256m -server -XX:+UseMembar -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:+CMSScavengeBeforeRemark -XX:ParallelCMSThreads=4 -XX:SurvivorRatio=4 -XX:+UseCMSCompactAtFullCollection -XX:+CMSClassUnloadingEnabled -XX:CMSInitiatingOccupancyFraction=70 -XX:+PrintFlagsFinal -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -agentpath:/home/operf/oprofile_install_hottub_test/lib/oprofile/libjvmti_oprofile.so" --conf spark.eventLog.enabled=true --conf spark.eventLog.dir=/tmp/sparkLogs --jars ${DB_JAR} -i ${SCALA_PATH}/spark${SCRIPT_SEQ}.scala > /dev/null 2>&1
-    ${SPARK_HOME}/bin/spark-shell --master yarn --num-executors 1 --executor-cores 1 --executor-memory 2g --driver-memory 4g --conf spark.executor.extraJavaOptions="-XX:MaxPermSize=256m -server -XX:+UseMembar -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:+CMSScavengeBeforeRemark -XX:ParallelCMSThreads=4 -XX:SurvivorRatio=4 -XX:+UseCMSCompactAtFullCollection -XX:+CMSClassUnloadingEnabled -XX:CMSInitiatingOccupancyFraction=70 -XX:+PrintFlagsFinal -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps" --conf spark.eventLog.enabled=true --conf spark.eventLog.dir=/tmp/sparkLogs --jars ${DB_JAR} -i ${SCALA_PATH}/spark${SCRIPT_SEQ}.scala > /dev/null 2>&1
+    ${SPARK_HOME}/bin/spark-shell --master yarn --num-executors 1 --executor-cores $CORE_N --executor-memory 2g --driver-memory 4g --conf spark.executor.extraJavaOptions="-XX:MaxPermSize=256m -server -XX:+UseMembar -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:+CMSScavengeBeforeRemark -XX:ParallelCMSThreads=4 -XX:SurvivorRatio=4 -XX:+UseCMSCompactAtFullCollection -XX:+CMSClassUnloadingEnabled -XX:CMSInitiatingOccupancyFraction=70 -XX:+PrintFlagsFinal -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps" --conf spark.eventLog.enabled=true --conf spark.eventLog.dir=/tmp/sparkLogs --jars ${DB_JAR} -i ${SCALA_PATH}/spark${SCRIPT_SEQ}.scala > /dev/null 2>&1
+    #${SPARK_HOME}/bin/spark-shell --master yarn --num-executors 1 --executor-cores $CORE_N --executor-memory 2g --driver-memory 4g --conf spark.eventLog.enabled=true --conf spark.eventLog.dir=/tmp/sparkLogs --jars ${DB_JAR} -i ${SCALA_PATH}/spark${SCRIPT_SEQ}.scala > /dev/null 2>&1
     #${SPARK_HOME}/bin/spark-shell --master yarn --num-executors 1 --executor-cores 1 --executor-memory 2g --driver-memory 4g --conf spark.executor.extraJavaOptions="-server -XX:+UseParallelGC -XX:+UseAdaptiveSizePolicy -XX:ParallelGCThreads=4 -XX:+PrintFlagsFinal -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps" --conf spark.eventLog.enabled=true --conf spark.eventLog.dir=/tmp/sparkLogs --jars ${DB_JAR} -i ${SCALA_PATH}/spark${SCRIPT_SEQ}.scala > /dev/null 2>&1
 
     end_time=`date +%s`

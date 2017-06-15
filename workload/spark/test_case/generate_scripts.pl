@@ -751,7 +751,7 @@ EOF
             print $script_fh <<EOF;
 # Stop nmon and collect nmon logs
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ps -ef | grep nmon | grep -v grep | awk '{print \\\$2}' | xargs -i kill -9 \\{\\}"
-grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ls -lrt | tail -n 1 | awk '{print \\\$9}' | xargs -i scp \\{\\} $spark_conf->{"MASTER"}:\$RUNDIR/nmon/"
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ls -lrt *.nmon | tail -n 1 | awk '{print \\\$9}' | xargs -i scp \\{\\} $spark_conf->{"MASTER"}:\$RUNDIR/nmon/"
 
 EOF
         }
@@ -810,7 +810,7 @@ EOF
             print $script_fh <<EOF;
 # Stop nmon and collect nmon logs
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ps -ef | grep nmon | grep -v grep | awk '{print \\\$2}' | xargs -i kill -9 \\{\\}"
-grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ls -lrt | tail -n 1 | awk '{print \\\$9}' | xargs -i scp \\{\\} $spark_conf->{"MASTER"}:\$RUNDIR/nmon/"
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ls -lrt *.nmon | tail -n 1 | awk '{print \\\$9}' | xargs -i scp \\{\\} $spark_conf->{"MASTER"}:\$RUNDIR/nmon/"
 
 EOF
         }
@@ -928,7 +928,7 @@ EOF
             print $script_fh <<EOF;
 # Stop nmon and collect nmon logs
 grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ps -ef | grep nmon | grep -v grep | awk '{print \\\$2}' | xargs -i kill -9 \\{\\}"
-grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ls -lrt | tail -n 1 | awk '{print \\\$9}' | xargs -i scp \\{\\} $spark_conf->{"MASTER"}:\$RUNDIR/nmon/"
+grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ls -lrt *.nmon | tail -n 1 | awk '{print \\\$9}' | xargs -i scp \\{\\} $spark_conf->{"MASTER"}:\$RUNDIR/nmon/"
 
 EOF
         }
