@@ -25,6 +25,6 @@ set tez.runtime.report.partition.stats=true;
 -- set mapreduce.reduce.memory.mb=4096;
 -- set io.sort.mb=800;
 
-SET hive.exec.compress.output=true;
-SET mapred.output.compression.codec=com.hadoop.compression.lzo.LzoCodec;
+SET hive.exec.compress.output=false;
+--SET mapred.output.compression.codec=com.hadoop.compression.lzo.LzoCodec;
 

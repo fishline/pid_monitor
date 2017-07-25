@@ -11,7 +11,7 @@ create table os_order
 ,     t           string                         
 ,     dummy       string                       
 )
-stored as textfile;
+stored as orc tblproperties ("orc.compress"="NONE");
 -- orc does not work with lzo, store as eith "orc" or "textfile"
 
 insert overwrite table os_order 
