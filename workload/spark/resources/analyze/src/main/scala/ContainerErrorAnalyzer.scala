@@ -1,4 +1,5 @@
 package src.main.scala
+
 import org.apache.spark.{SparkConf, SparkContext, Logging}
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
@@ -14,14 +15,15 @@ import org.apache.spark.rdd._
 import scala.reflect._
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
+import java.io._
 
 object ContainerErrorAnalyzer extends Logging {
     def main(args: Array[String]) {
         Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
         Logger.getLogger("org.eclipse.jetty.server").setLevel(Level.OFF)
 
-        if (args.length < 2) {
-            println("Usage: <path_to_failed_container_log> <path_to_success_container_log>")
+        if (args.length < 3) {
+            println("Usage: <path_to_failed_container_log> <path_to_success_container_log> <output file>")
             System.exit(0)
         }
 
@@ -441,7 +443,7 @@ object ContainerErrorAnalyzer extends Logging {
                 }
             }
 
-        val failRdd = sc.textFile("hdfs://10.10.10.10/tmp/fail_sample/*/*", 20).map{ line =>
+        val failRdd = sc.textFile(args(0), 20).map{ line =>
             val data = line.split("###NO_SUCH_BREAK###")
                 val containerId = data(0).split(":")
                 var strlen = data(2).length()
@@ -522,22 +524,25 @@ object ContainerErrorAnalyzer extends Logging {
                 error_container += entry
         }
 
-        println("============= Error Mapping =============")
+        val writer = new PrintWriter(new File(args(2)))
+
+        writer.write("============= Error Mapping =============\n")
         errMapping.foreach{ x =>
-            println(x._1)
-                println(x._2 + "\n")
+            writer.write(x._1 + "\n")
+            writer.write(x._2 + "\n\n")
         }
-        println("\n============= Container - Error =============")
+        writer.write("\n============= Container - Error =============\n")
         container_error.foreach{ x =>
-            print(x._1 + "    ")
+            writer.write(x._1 + "    ")
                 for (i <- 0 until x._2.length) {
-                    print(x._2(i) + ", ")
+                    writer.write(x._2(i) + ", ")
                 }
-            print("\n")
+            writer.write("\n")
         }
-        println("\n============= Error - Count =============")
+        writer.write("\n============= Error - Count =============\n")
         error_container.foreach{ x =>
-            println(x._1 + "    " + x._2)
+            writer.write(x._1 + "    " + x._2 + "\n")
         }
+        writer.close()
     }
 }
