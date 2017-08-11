@@ -14,7 +14,7 @@ MAX_SCRIPT_IDX=8
 for i in `seq ${NUM_SEQ_REQ}`
 do
     SCRIPT_SEQ=`shuf -i 1-${MAX_SCRIPT_IDX} -n 1`
-    DB_IDX=`shuf -i 1-1 -n 1`
+    DB_IDX=`shuf -i 1-10 -n 1`
     begin_time=`date +%s`
 
     sleep `shuf -i 1-45 -n 1`
