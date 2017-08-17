@@ -543,7 +543,7 @@ object ContainerErrorAnalyzerV2 extends Logging {
                 (a, entry)
         }
 
-        val gcInfo = sc.textFile("hdfs://10.10.10.10/container_gc_info_tencent/*", 100).map{line =>
+        val gcInfo = sc.textFile(args(2), 100).map{line =>
             val data = line.split(" ")
                 (data(0), data(1))
         }
