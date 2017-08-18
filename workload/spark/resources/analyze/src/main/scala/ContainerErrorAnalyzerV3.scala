@@ -1314,7 +1314,7 @@ object ContainerErrorAnalyzerV3 extends Logging {
         }
 
         val failInfoAllForRed = failInfoAll.map{ x =>
-            var gc = "NA"
+            var gc = "-1"
                 if (x._5 != -1) {
                     gc = x._5.toString
                 }
