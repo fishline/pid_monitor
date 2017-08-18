@@ -1366,7 +1366,7 @@ object ContainerErrorAnalyzerV3 extends Logging {
                             startdate = formatter.format(calendar.getTime())
                     }
                 }
-            var startts = "NA"
+            var startts = "-1"
                 for (i <- 0 until data2.length) {
                     if (data2(i).contains("STARTTS")) {
                         val tmpFields = data2(i).split(":")
@@ -1381,7 +1381,7 @@ object ContainerErrorAnalyzerV3 extends Logging {
                     }
                 }
             if (duration_ht == "") {
-                duration_ht = "NA"
+                duration_ht = "-1"
             }
             var duration_c = ""
                 for (i <- 0 until data2.length) {
@@ -1391,16 +1391,16 @@ object ContainerErrorAnalyzerV3 extends Logging {
                     }
                 }
             if (duration_c == "") {
-                duration_c = "NA"
+                duration_c = "-1"
             }
-            var rows = "NA"
+            var rows = "-1"
                 for (i <- 0 until data2.length) {
                     if (data2(i).contains("ROWS")) {
                         val tmpFields = data2(i).split(":")
                             rows = tmpFields(1).toString
                     }
                 }
-            var gccost = "NA"
+            var gccost = "-1"
                 for (i <- 0 until data2.length) {
                     if (data2(i).contains("GCCOST")) {
                         val tmpFields = data2(i).split(":")
