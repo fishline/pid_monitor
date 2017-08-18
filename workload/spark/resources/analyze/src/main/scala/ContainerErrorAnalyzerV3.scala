@@ -1320,10 +1320,10 @@ object ContainerErrorAnalyzerV3 extends Logging {
                 }
             var errs = "NONE"
                 if (x._6.length > 0) {
-                    errs = x._6(0).toString
+                    errs = "E" + x._6(0).toString
                         if (x._6.length > 1) {
                             for (i <- 1 until x._6.length) {
-                                errs = errs + ";" + x._6(i)
+                                errs = errs + ";E" + x._6(i)
                             }
                         }
                 }
