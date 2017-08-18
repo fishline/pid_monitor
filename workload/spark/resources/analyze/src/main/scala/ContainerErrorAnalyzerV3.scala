@@ -1302,6 +1302,98 @@ object ContainerErrorAnalyzerV3 extends Logging {
             items.toList
         }.cache()
 
+        val cIPStartDurationInfoForRed = input.filter{case (x, y) => x.contains("duration.log")}.flatMap{ case (fn, fileContent) =>
+            val lines = fileContent.split("\n")
+            var items = new ListBuffer[(String, String)]()
+            val hinfo = "(hottub_info-tdw-[0-9]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+)".r
+            val hi = hinfo.findAllIn(fn)
+            if (hi.hasNext) {
+                val hottubInfo = hi.next()
+                val hottubFields = hottubInfo.split("-")
+                val ip = hottubFields(2) + "." + hottubFields(3) + "." + hottubFields(4) + "." + hottubFields(5)
+                // Check for following three regex on each line
+                val cr = "(container_[0-9]+_[0-9]+_[0-9]+_[0-9]+)".r
+                val fr = "syslog".r
+                val startr = "(start:\\s+[0-9]+\\p{Punct}[0-9]+\\p{Punct}[0-9]+\\s+[0-9]+\\p{Punct}[0-9]+\\p{Punct}[0-9]+)".r
+                val stopr = "(stop:\\s+[0-9]+\\p{Punct}[0-9]+\\p{Punct}[0-9]+\\s+[0-9]+\\p{Punct}[0-9]+\\p{Punct}[0-9]+)".r
+                for (i <- 0 until lines.length) {
+                    val cm = cr.findAllIn(lines(i))
+                    if (cm.hasNext) {
+                        val cid = cm.next()
+                        var t = "Spark"
+                        val fm = fr.findAllIn(lines(i))
+                        if (fm.hasNext) {
+                            t = "MR"
+                        }
+                        val startm = startr.findAllIn(lines(i))
+                        if (startm.hasNext) {
+                            val startFields = startm.next().split("\\s+")
+                            val stopm = stopr.findAllIn(lines(i))
+                            if (stopm.hasNext) {
+                                val stopFields = stopm.next().split("\\s+")
+                                var startTS = 0L
+                                var stopTS = 0L
+                                var format = "yyyy-MM-dd HH:mm:ss"
+                                var sdf = new SimpleDateFormat(format)
+                                sdf.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"))
+                                try {
+                                    var d = sdf.parse(startFields(1) + " " + startFields(2))
+                                    if (d != null) {
+                                        startTS = d.getTime() / 1000L
+                                    }
+                                } catch {
+                                    case ex: ParseException => {
+                                        format = "yyyy/MM/dd HH:mm:ss"
+                                        sdf = new SimpleDateFormat(format)
+                                        sdf.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"))
+                                        try {
+                                            var d = sdf.parse(startFields(1) + " " + startFields(2))
+                                            if (d != null) {
+                                                startTS = d.getTime() / 1000L
+                                            }
+                                        } catch {
+                                            case ex1: ParseException => {}
+                                        }
+                                    }
+                                }
+
+                                format = "yyyy-MM-dd HH:mm:ss"
+                                sdf = new SimpleDateFormat(format)
+                                sdf.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"))
+                                try {
+                                    var d = sdf.parse(stopFields(1) + " " + stopFields(2))
+                                    if (d != null) {
+                                        stopTS = d.getTime() / 1000L
+                                    }
+                                } catch {
+                                    case ex: ParseException => {
+                                        format = "yyyy/MM/dd HH:mm:ss"
+                                        sdf = new SimpleDateFormat(format)
+                                        sdf.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"))
+                                        try {
+                                            var d = sdf.parse(stopFields(1) + " " + stopFields(2))
+                                            if (d != null) {
+                                                stopTS = d.getTime() / 1000L
+                                            }
+                                        } catch {
+                                            case ex1: ParseException => {}
+                                        }
+                                    }
+                                }
+
+                                if (startTS > 0L && stopTS > 0L) {
+                                    val dura = stopTS - startTS
+                                    val tupleItem = (cid + ":" + ip, "STARTTS:" + startTS.toString + "#" + "DURATION_C:" + dura.toString)
+                                    items += tupleItem
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            items.toList
+        }.cache()
+
         val containerTSDuraPidWtypeHottubForRed = containerTSDuraPidWtypeHottub.map{ x =>
             val data = x._2.split(":")
             (x._1, "STARTTS:" + data(0) + "#" + "DURATION_HT:" + data(1) + "#" + "WTYPE:" + data(3) + "#" + "HOTTUB:" + data(4) + "#" + "PID:" + data(2))
@@ -1334,7 +1426,7 @@ object ContainerErrorAnalyzerV3 extends Logging {
             (x._1 + ":" + x._2, "WTYPE:" + x._3 + "#" + "DURATION_C:" + x._4 + "#" + "GCCOST:" + gc + "#" + "ERRS:" + errs)
         }
 
-        val infoAll = containerTSDuraPidWtypeHottubForRed ++ cInfoWithGCForRed ++ cIPRowInfoForRed  ++ failInfoAllForRed
+        val infoAll = containerTSDuraPidWtypeHottubForRed ++ cInfoWithGCForRed ++ cIPRowInfoForRed  ++ failInfoAllForRed ++ cIPStartDurationInfoForRed
             val infoAllRed = infoAll.reduceByKey{ (a, b) =>
             a + "#" + b
         }
@@ -1365,24 +1457,23 @@ object ContainerErrorAnalyzerV3 extends Logging {
             if (wtype == "") {
                 wtype = "NA"
             }
-            var startdate = "NA"
-            for (i <- 0 until data2.length) {
-                if (data2(i).contains("STARTTS")) {
-                    val tmpFields = data2(i).split(":")
-                    val calendar = new GregorianCalendar
-                    calendar.setTimeInMillis(tmpFields(1).toLong * 1000L)
-                    calendar.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"))
-                    val formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                    formatter.setCalendar(calendar)
-                    startdate = formatter.format(calendar.getTime())
-                }
-            }
             var startts = "-1"
             for (i <- 0 until data2.length) {
                 if (data2(i).contains("STARTTS")) {
                     val tmpFields = data2(i).split(":")
-                    startts = tmpFields(1).toString
+                    if (tmpFields(1).toInt > startts.toInt) {
+                        startts = tmpFields(1).toString
+                    }
                 }
+            }
+            var startdate = "NA"
+            if (startts.toInt > 0) {
+                val calendar = new GregorianCalendar
+                calendar.setTimeInMillis(startts.toLong * 1000L)
+                calendar.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"))
+                val formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                formatter.setCalendar(calendar)
+                startdate = formatter.format(calendar.getTime())
             }
             var duration_ht = ""
             for (i <- 0 until data2.length) {
