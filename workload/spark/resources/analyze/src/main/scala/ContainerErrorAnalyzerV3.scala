@@ -1264,39 +1264,44 @@ object ContainerErrorAnalyzerV3 extends Logging {
         }
         writerErr.close()
 
-            val cIPRowInfo = input.filter{case (x, y) => x.contains("rows.log")}.flatMap{ case (fn, fileContent) =>
-                val lines = fileContent.split("\n")
-                    var items = new ListBuffer[(String, String)]()
-                    val hinfo = "(hottub_info-tdw-[0-9]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+)".r
-                    val hi = hinfo.findAllIn(fn)
-                    if (hi.hasNext) {
-                        val hottubInfo = hi.next()
-                            val hottubFields = hottubInfo.split("-")
-                            val ip = hottubFields(2) + "." + hottubFields(3) + "." + hottubFields(4) + "." + hottubFields(5)
-                            // Check for following three regex on each line
-                            val cr = "(container_[0-9]+_[0-9]+_[0-9]+_[0-9]+)".r
-                            val mrr = "ExecMapper".r
-                            val pr = "(processed\\s+[0-9]+\\s+rows)".r
-                            for (i <- 0 until lines.length) {
-                                val cm = cr.findAllIn(lines(i))
-                                    if (cm.hasNext) {
-                                        val cid = cm.next()
-                                            var t = "MR-reduce"
-                                            val mrm = mrr.findAllIn(lines(i))
-                                            if (mrm.hasNext) {
-                                                t = "MR-map"
-                                            }
-                                        val pm = pr.findAllIn(lines(i))
-                                            if (pm.hasNext) {
-                                                val fields = pm.next().split("\\s+")
-                                                    val tupleItem = (cid + ":" + ip, fields(1) + ":" + t)
-                                                    items += tupleItem
-                                            }
-                                    }
+        val cIPRowInfo = input.filter{case (x, y) => x.contains("rows.log")}.flatMap{ case (fn, fileContent) =>
+            val lines = fileContent.split("\n")
+            var items = new ListBuffer[(String, String)]()
+            val hinfo = "(hottub_info-tdw-[0-9]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+)".r
+            val hi = hinfo.findAllIn(fn)
+            if (hi.hasNext) {
+                val hottubInfo = hi.next()
+                val hottubFields = hottubInfo.split("-")
+                val ip = hottubFields(2) + "." + hottubFields(3) + "." + hottubFields(4) + "." + hottubFields(5)
+                // Check for following three regex on each line
+                val cr = "(container_[0-9]+_[0-9]+_[0-9]+_[0-9]+)".r
+                val mrr = "ExecMapper".r
+                val pr = "(processed\\s+[0-9]+\\s+rows)".r
+                val memr = "(used\\s+memory\\s+=\\s+[0-9]+)".r
+                for (i <- 0 until lines.length) {
+                    val cm = cr.findAllIn(lines(i))
+                    if (cm.hasNext) {
+                        val cid = cm.next()
+                        var t = "MR-reduce"
+                        val mrm = mrr.findAllIn(lines(i))
+                        if (mrm.hasNext) {
+                            t = "MR-map"
+                        }
+                        val pm = pr.findAllIn(lines(i))
+                        if (pm.hasNext) {
+                            val pFields = pm.next().split("\\s+")
+                            val memm = memr.findAllIn(lines(i))
+                            if (memm.hasNext) {
+                                val memFields = memm.next().split("\\s+")
+                                val tupleItem = (cid + ":" + ip, pFields(1) + ":" + t + ":" + memFields(3))
+                                items += tupleItem
                             }
+                        }
                     }
-                items.toList
-            }.cache()
+                }
+            }
+            items.toList
+        }.cache()
 
         val containerTSDuraPidWtypeHottubForRed = containerTSDuraPidWtypeHottub.map{ x =>
             val data = x._2.split(":")
@@ -1310,7 +1315,7 @@ object ContainerErrorAnalyzerV3 extends Logging {
 
         val cIPRowInfoForRed = cIPRowInfo.map{ x =>
             val data = x._2.split(":")
-                (x._1, "ROWS:" + data(0) + "#" + "WTYPE:" + data(1))
+            (x._1, "ROWS:" + data(0) + "#" + "WTYPE:" + data(1) + "#" + "MEM:" + data(2))
         }
 
         val failInfoAllForRed = failInfoAll.map{ x =>
@@ -1337,94 +1342,118 @@ object ContainerErrorAnalyzerV3 extends Logging {
 
         val finalTable = infoAllRed.map{ x =>
             val data1 = x._1.split(":")
-                val cid = data1(0)
-                val cidFields = cid.split("_")
-                val appid = "application_" + cidFields(1) + "_" + cidFields(2)
-                val hostip = data1(1)
-                val data2 = x._2.split("#")
-                var wtype = ""
-                for (i <- 0 until data2.length) {
-                    if (data2(i).contains("WTYPE")) {
-                        val tmpFields = data2(i).split(":")
-                            if (tmpFields(1) != "NA" && tmpFields(1).length > wtype.length) {
-                                wtype = tmpFields(1)
-                            }
+            val cid = data1(0)
+            val cidFields = cid.split("_")
+            val appid = "application_" + cidFields(1) + "_" + cidFields(2)
+            val hostip = data1(1)
+            val data2 = x._2.split("#")
+            var wtype = ""
+            for (i <- 0 until data2.length) {
+                if (data2(i).contains("WTYPE")) {
+                    val tmpFields = data2(i).split(":")
+                    if (tmpFields(1) != "NA" && tmpFields(1).length > wtype.length) {
+                        wtype = tmpFields(1)
                     }
                 }
+            }
             if (wtype == "") {
                 wtype = "NA"
             }
             var startdate = "NA"
-                for (i <- 0 until data2.length) {
-                    if (data2(i).contains("STARTTS")) {
-                        val tmpFields = data2(i).split(":")
-                            val calendar = new GregorianCalendar
-                            calendar.setTimeInMillis(tmpFields(1).toLong * 1000L)
-                            calendar.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"))
-                            val formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                            formatter.setCalendar(calendar)
-                            startdate = formatter.format(calendar.getTime())
-                    }
+            for (i <- 0 until data2.length) {
+                if (data2(i).contains("STARTTS")) {
+                    val tmpFields = data2(i).split(":")
+                    val calendar = new GregorianCalendar
+                    calendar.setTimeInMillis(tmpFields(1).toLong * 1000L)
+                    calendar.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"))
+                    val formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                    formatter.setCalendar(calendar)
+                    startdate = formatter.format(calendar.getTime())
                 }
+            }
             var startts = "-1"
-                for (i <- 0 until data2.length) {
-                    if (data2(i).contains("STARTTS")) {
-                        val tmpFields = data2(i).split(":")
-                            startts = tmpFields(1).toString
-                    }
+            for (i <- 0 until data2.length) {
+                if (data2(i).contains("STARTTS")) {
+                    val tmpFields = data2(i).split(":")
+                    startts = tmpFields(1).toString
                 }
+            }
             var duration_ht = ""
-                for (i <- 0 until data2.length) {
-                    if (data2(i).contains("DURATION_HT")) {
-                        val tmpFields = data2(i).split(":")
-                        duration_ht = tmpFields(1).toString
-                    }
+            for (i <- 0 until data2.length) {
+                if (data2(i).contains("DURATION_HT")) {
+                    val tmpFields = data2(i).split(":")
+                    duration_ht = tmpFields(1).toString
                 }
+            }
             if (duration_ht == "") {
                 duration_ht = "-1"
             }
             var duration_c = ""
-                for (i <- 0 until data2.length) {
-                    if (data2(i).contains("DURATION_C")) {
-                        val tmpFields = data2(i).split(":")
-                        duration_c = tmpFields(1).toString
-                    }
+            for (i <- 0 until data2.length) {
+                if (data2(i).contains("DURATION_C")) {
+                    val tmpFields = data2(i).split(":")
+                    duration_c = tmpFields(1).toString
                 }
+            }
             if (duration_c == "") {
                 duration_c = "-1"
             }
             var rows = "-1"
-                for (i <- 0 until data2.length) {
-                    if (data2(i).contains("ROWS")) {
-                        val tmpFields = data2(i).split(":")
-                            rows = tmpFields(1).toString
-                    }
+            for (i <- 0 until data2.length) {
+                if (data2(i).contains("ROWS")) {
+                    val tmpFields = data2(i).split(":")
+                    rows = tmpFields(1).toString
                 }
+            }
             var gccost = "-1"
-                for (i <- 0 until data2.length) {
-                    if (data2(i).contains("GCCOST")) {
-                        val tmpFields = data2(i).split(":")
-                            gccost = tmpFields(1).toString
-                    }
+            for (i <- 0 until data2.length) {
+                if (data2(i).contains("GCCOST")) {
+                    val tmpFields = data2(i).split(":")
+                    gccost = tmpFields(1).toString
                 }
+            }
             var hottub = "NA"
-                for (i <- 0 until data2.length) {
-                    if (data2(i).contains("HOTTUB")) {
-                        val tmpFields = data2(i).split(":")
-                            hottub = tmpFields(1).toString
-                    }
+            for (i <- 0 until data2.length) {
+                if (data2(i).contains("HOTTUB")) {
+                    val tmpFields = data2(i).split(":")
+                    hottub = tmpFields(1).toString
                 }
+            }
             var errs = "NONE"
-                for (i <- 0 until data2.length) {
-                    if (data2(i).contains("ERRS")) {
-                        val tmpFields = data2(i).split(":")
-                            errs = tmpFields(1).toString
-                    }
+            for (i <- 0 until data2.length) {
+                if (data2(i).contains("ERRS")) {
+                    val tmpFields = data2(i).split(":")
+                    errs = tmpFields(1).toString
                 }
-            cid + "," + appid + "," + hostip + "," + wtype + "," + startdate + "," + startts + "," + duration_ht + "," + duration_c + "," + rows + "," + gccost + "," + hottub + "," + errs
+            }
+            var mem = "-1"
+            for (i <- 0 until data2.length) {
+                if (data2(i).contains("MEM")) {
+                    val tmpFields = data2(i).split(":")
+                    mem = tmpFields(1).toString
+                }
+            }
+            var duration_delta = -1
+            if (duration_ht != "-1" && duration_c != "-1") {
+                if (duration_ht.toFloat.toInt >= duration_c.toInt) {
+                    duration_delta = duration_ht.toFloat.toInt - duration_c.toInt
+                } else {
+                    duration_delta = duration_c.toInt - duration_ht.toFloat.toInt
+                }
+            }
+            var duration_max = duration_ht.toFloat.toInt
+            if (duration_c.toInt > duration_max) {
+                duration_max = duration_c.toInt
+            }
+            var speed = -1
+            if (rows.toInt > 10000 && duration_max > 5) {
+                speed = rows.toInt / duration_max
+            }
+            
+            cid + "," + appid + "," + hostip + "," + wtype + "," + startdate + "," + startts + "," + duration_ht + "," + duration_c + "," + rows + "," + gccost + "," + hottub + "," + errs + "," + mem + "," + duration_delta.toString + "," + duration_max.toString + "," + speed.toString
         }
 
-        writer.write("ContainerID,ApplicationID,HostIP,WorkloadType,StartDATE,StartTS,DurationFromHottub,DurationFromContainerLog,Rows,GCCost,HottubJVMType,Errors\n")
+        writer.write("ContainerID,ApplicationID,HostIP,WorkloadType,StartDATE,StartTS,DurationFromHottub,DurationFromContainerLog,Rows,GCCost,HottubJVMType,Errors,MEM,DurationDelta,DurationMax,Speed\n")
         finalTable.collect().foreach{ x =>
             writer.write(x + "\n")
         }
