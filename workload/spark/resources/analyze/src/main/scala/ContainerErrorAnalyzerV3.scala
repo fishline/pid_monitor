@@ -77,7 +77,7 @@ object ContainerErrorAnalyzerV3 extends Logging {
                             } else if (f2 == true) {
                                 wType = "MR-reduce"
                             } else {
-                                wType = "MR-unknown"
+                                wType = "MR"
                             }
                         }
                     val hinfo = "(hottub_info-tdw-[0-9]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+-[0-9]+)".r
