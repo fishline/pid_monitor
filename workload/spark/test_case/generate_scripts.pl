@@ -763,9 +763,13 @@ EOF
         if ($step->{"SHELL"} =~ /\<SPARK_HOME\>/) {
             $step->{"SHELL"} =~ s/\<SPARK_HOME\>/$spark_conf->{"SPARK_HOME"}/;
         }
+        if ($step->{"SHELL"} =~ /\<RUN_HOME\>/) {
+            $step->{"SHELL"} =~ s/\<RUN_HOME\>/\$PMH\/workload\/spark\/test_case\/$script_dir/;
+        }
         print $script_fh <<EOF;
 # SHELL command
 $step->{"SHELL"}
+cd \$PMH
 
 EOF
     } elsif (exists $step->{"CHANGE_SMT"}) {

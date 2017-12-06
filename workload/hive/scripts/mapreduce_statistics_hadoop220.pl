@@ -89,19 +89,23 @@ while (my $file = readdir(DIR)) {
         if ($file =~ /_m_/) {
             my $records_in = `grep -A 2 "RECORDS_IN" $job_folder/map/jobhistory/taskcounters/$file | tail -n 1 | awk '{print \$1}'`;
             chomp($records_in);
-            $map_hive_records_in{$file} = $records_in;
-            if (exists $host_hive_records_in{$map_host{$file}}) {
-                $host_hive_records_in{$map_host{$file}} = $host_hive_records_in{$map_host{$file}} + $records_in;
-            } else {
-                $host_hive_records_in{$map_host{$file}} = $records_in;
+            if ($records_in ne "") {
+                $map_hive_records_in{$file} = $records_in;
+                if (exists $host_hive_records_in{$map_host{$file}}) {
+                    $host_hive_records_in{$map_host{$file}} = $host_hive_records_in{$map_host{$file}} + $records_in;
+                } else {
+                    $host_hive_records_in{$map_host{$file}} = $records_in;
+                }
             }
             my $bytes_read = `grep -A 2 "HDFS: Number of bytes read" $job_folder/map/jobhistory/taskcounters/$file | tail -n 1 | awk '{print \$1}'`;
             chomp($bytes_read);
-            $map_hdfs_bytes_read{$file} = $bytes_read;
-            if (exists $host_hdfs_bytes_read{$map_host{$file}}) {
-                $host_hdfs_bytes_read{$map_host{$file}} = $host_hdfs_bytes_read{$map_host{$file}} + $bytes_read;
-            } else {
-                $host_hdfs_bytes_read{$map_host{$file}} = $bytes_read;
+            if ($bytes_read ne "") {
+                $map_hdfs_bytes_read{$file} = $bytes_read;
+                if (exists $host_hdfs_bytes_read{$map_host{$file}}) {
+                    $host_hdfs_bytes_read{$map_host{$file}} = $host_hdfs_bytes_read{$map_host{$file}} + $bytes_read;
+                } else {
+                    $host_hdfs_bytes_read{$map_host{$file}} = $bytes_read;
+                }
             }
         }
     }

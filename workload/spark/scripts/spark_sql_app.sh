@@ -23,7 +23,7 @@ do
     begin_time=`date +%s`
 
     sleep `shuf -i 1-60 -n 1`
-    ${SPARK_HOME}/bin/spark-submit --master yarn --num-executors 1 --executor-cores ${EXEC_CORE} --executor-memory ${EXEC_MEM} --driver-memory 4g --conf spark.executor.extraJavaOptions="-XX:MaxPermSize=256m -server -XX:+UseMembar -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:+CMSScavengeBeforeRemark -XX:ParallelCMSThreads=4 -XX:SurvivorRatio=4 -XX:+UseCMSCompactAtFullCollection -XX:+CMSClassUnloadingEnabled -XX:CMSInitiatingOccupancyFraction=70 -XX:+UnlockExperimentalVMOptions -XX:+UseCriticalCompilerThreadPriority" --conf spark.eventLog.enabled=true --conf spark.eventLog.dir=/tmp/sparkLogs --jars ${DB_JAR} --class src.main.scala.SparkQuery${SCRIPT_SEQ} ${APP_JAR} ${DB_NAME} > /dev/null 2>&1
+    ${SPARK_HOME}/bin/spark-submit --master yarn --num-executors 1 --executor-cores ${EXEC_CORE} --executor-memory ${EXEC_MEM} --driver-memory 4g --conf spark.executor.extraJavaOptions="-XX:MaxPermSize=256m -server -XX:+UseMembar -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:+CMSScavengeBeforeRemark -XX:ParallelCMSThreads=4 -XX:SurvivorRatio=4 -XX:+UseCMSCompactAtFullCollection -XX:+CMSClassUnloadingEnabled -XX:CMSInitiatingOccupancyFraction=70" --conf spark.eventLog.enabled=true --conf spark.eventLog.dir=/tmp/sparkLogs --jars ${DB_JAR} --class src.main.scala.SparkQuery${SCRIPT_SEQ} ${APP_JAR} ${DB_NAME} > /dev/null 2>&1
 
     end_time=`date +%s`
     echo "$((end_time - begin_time))" >> ${LOG_FOLDER}/spark_job_e2e_sec.log
