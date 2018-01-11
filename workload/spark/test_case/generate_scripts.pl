@@ -9,12 +9,6 @@ if ($#ARGV + 1 != 1) {
     die "Usage: ./generate_scripts.pl <TEST_PLAN_JSON>";
 }
 
-my $is_power = 0;
-`uname -a | grep ppc64le`;
-if ($? == 0) {
-    $is_power = 1;
-}
-
 my $test_plan_fn = $ARGV[0];
 my %tags = ();
 ########## Load JSON definition from above two files ############
@@ -44,8 +38,8 @@ my $spark_conf = $json->decode($spark_conf_text);
 if (not (exists $spark_conf->{"MASTER"} and exists $spark_conf->{"SPARK_HOME"} and exists $spark_conf->{"HADOOP_HOME"})) {
     die "Please define MASTER/SPARK_HOME/HADOOP_HOME in $spark_conf_fn";
 }
-if (($spark_conf->{"SCHEDULER"} ne "YARN") and ($spark_conf->{"SCHEDULER"} ne "STANDALONE")) {
-    die "Does not support ".$spark_conf->{"SCHEDULER"}.", only YARN/STANDALONE supported";
+if ($spark_conf->{"SCHEDULER"} ne "YARN") {
+    die "Does not support ".$spark_conf->{"SCHEDULER"}.", only YARN supported";
 }
 # Add spark event configuration
 my $spark_event_log_dir = "/tmp/sparkLogs";
@@ -109,20 +103,6 @@ foreach my $node (@nodes) {
     }
 }
 
-my $cores_online = "";
-my $cores = 0;
-my $total_cores_online = 0;
-if ($is_power == 1) {
-    $cores_online = `ssh $first_slave ppc64_cpu --cores-on`;
-    if ($cores_online =~ /Number of cores online = ([0-9]+)$/) {
-        $cores = $1;
-    }
-    $total_cores_online = $cores * $slave_count;
-    if ($cores == 0) {
-        die "Cannot get online cores info from \"ppc64_cpu --cores-on\"";
-    }
-}
-
 push (@nodes, $spark_conf->{"MASTER"});
 if ($#nodes == 0) {
     die "Slave nodes not defined in ".$spark_conf->{"HADOOP_HOME"}."/etc/hadoop/slaves";
@@ -140,13 +120,6 @@ foreach my $node (@nodes) {
         if ($? != 0) {
             $need_install_tools = 1;
             print "Please install dstat on $node\n";
-        }
-        if ($is_power == 1) {
-            `ssh $node which ppc64_cpu`;
-            if ($? != 0) {
-                $need_install_tools = 1;
-                print "Please install ppc64_cpu on $node\n";
-            }
         }
     }
 }
@@ -193,33 +166,10 @@ ctrl_c_exit() {
         `ps -ef | grep java | grep SparkSubmit | awk '{print \$2}' | xargs -i kill -9 {}`
 EOF
 
-# Restore SMT4 if SMT setting has been changed
-if ($is_power == 1) {
-    print $script_fh <<EOF;
-        if [ \$SMT_NEED_RESET -eq 1 ]
-        then
-            # ACTION reset to SMT4 on all slave nodes
-            grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=4"
-        fi
-EOF
-}
-
 print $script_fh <<EOF;
         \$PMH/workload/spark/scripts/create_summary_table.pl \$PMH/workload/spark/test_case/$test_plan_fn \$RUNDIR
 
 EOF
-
-# Restore spark-env.sh if we are running in STANDALONE mode
-if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
-    print $script_fh <<EOF;
-        $spark_conf->{"SPARK_HOME"}/sbin/stop-all.sh
-        \\cp \$RUNDIR/.spark-env.sh.backup.master $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
-        for SLAVE in \$SLAVES
-        do
-            scp \$RUNDIR/.spark-env.sh.backup.\$SLAVE \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
-        done
-EOF
-}
 
 print $script_fh <<EOF;
     fi
@@ -233,6 +183,8 @@ CMD_TO_KILL=""
 SMT_NEED_RESET=0
 trap ctrl_c_exit INT
 
+export TAG_TO_KILL_ME=1
+export KILL_TGT=`whoami`
 export SPARK_HOME=$spark_conf->{"SPARK_HOME"}
 export HADOOP_HOME=$spark_conf->{"HADOOP_HOME"}
 export HADOOP_CONF_DIR=$spark_conf->{"HADOOP_HOME"}/etc/hadoop
@@ -260,33 +212,24 @@ cp -R html \$RUNDIR/html
 
 EOF
 
-# Backup spark-env.sh if we are running in STANDALONE mode
-if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
-    print $script_fh <<EOF;
-cp $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh \$RUNDIR/.spark-env.sh.backup.master
-for SLAVE in \$SLAVES
-do
-    scp \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh \$RUNDIR/.spark-env.sh.backup.\$SLAVE
-done
-if [ ! -e $spark_conf->{"SPARK_HOME"}/conf/slaves ]
-then
-    cp $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves $spark_conf->{"SPARK_HOME"}/conf/slaves
-fi
-
-EOF
-}
-
 # *-scenario.json steps
-my $smt_reset = 0;
 my $last_worker_instances = 0;
 my $last_worker_cores = 0;
 my $def_worker_instances = 0;
 my $def_worker_cores = 0;
-my $change_smt = 1;
 my $sweeping = 0;
 my $sweeping_params = "";
 my $tag = "";
 foreach my $step (@{$scenario}) {
+    print $script_fh <<EOF;
+# Do cleanup before any step
+PIDS=`ps -ef | grep -v "ps -ef" | grep "^\$KILL_TGT\\\\s" | awk '{print \$2}' | xargs -i sh -c "echo {} && cat /proc/{}/environ 2>/dev/null | grep -s TAG_TO_KILL_ME 2>&1" | grep -B 1 "Binary" | grep -v Binary | grep -v "\\\\-" | tr '\\n' ','`
+echo \$PIDS | tr ',' '\\n' | grep -v "^\\\$" | xargs -i sh -c "kill -9 {} 2>/dev/null"
+sleep 2
+PIDS=`ps -ef | grep -v "ps -ef" | grep "^\$KILL_TGT\\\\s" | awk '{print \$2}' | xargs -i sh -c "echo {} && cat /proc/{}/environ 2>/dev/null | grep -s TAG_TO_KILL_ME 2>&1" | grep -B 1 "Binary" | grep -v Binary | grep -v "\\\\-" | tr '\\n' ','`
+echo \$PIDS | tr ',' '\\n' | grep -v "^\\\$" | xargs -i sh -c "kill -9 {} 2>/dev/null"
+
+EOF
     # For SWEEPING, create new run.sh for scheduler
     if (exists $step->{"SWEEPING"}) {
         if ((not exists $step->{"SWEEPING_PARAMS"}) or (not exists $step->{"SWEEPING_METRIC"})) {
@@ -403,7 +346,6 @@ EOF
         }
     } elsif (exists $step->{"TAG"}) {
         my $current_spark_event_dir = "";
-        my $smt_changed = 0;
         my $tag_idx = 0;
         if (exists $tags{$step->{"TAG"}}) {
             $tags{$step->{"TAG"}} = $tags{$step->{"TAG"}} + 1;
@@ -431,86 +373,6 @@ EOF
         } else {
             $def_worker_instances = $step->{"CMD"}->{"EXECUTOR_PER_DN"};
             $def_worker_cores = $step->{"CMD"}->{"EXECUTOR_VCORES"};
-            if (($is_power == 1) and ($change_smt == 1)) {
-                my $set_smt = 0;
-                if (exists $step->{"SMT"}) {
-                    $smt_changed = 1;
-                    $smt_reset = 1;
-                    $set_smt = $step->{"SMT"};
-                } else {
-                    $smt_changed = 1;
-                    $smt_reset = 1;
-
-                    # For YARN, we need to add additional core for Application Master
-                    if ($spark_conf->{"SCHEDULER"} eq "YARN") {
-                        $def_worker_cores = $def_worker_cores + 1;
-                    }
-                    my $node_cores_required = $def_worker_instances * $def_worker_cores;
-                    my $smt_ratio = ($node_cores_required * 1.0)/($cores * 1.0);
-                    if ($smt_ratio <= 1.0) {
-                        $set_smt = 1;
-                    } elsif ($smt_ratio <= 2.0) {
-                        $set_smt = 2;
-                    } elsif ($smt_ratio <= 4.0) {
-                        $set_smt = 4;
-                    } elsif ($smt_ratio <= 8.0) {
-                        $set_smt = 8;
-                    } else {
-                        close $script_fh;
-                        `rm -rf $script_dir_full`;
-                        die "TAG ".$step->{"TAG"}." EXECUTOR_PER_DN(".$def_worker_instances.") X EXECUTOR_VCORES(".$def_worker_cores.") exceed available cores in all slaves";
-                    }
-
-                    # For YARN, we need to restore the original core config
-                    if ($spark_conf->{"SCHEDULER"} eq "YARN") {
-                        $def_worker_cores = $def_worker_cores - 1;
-                    }
-                }
-                print $script_fh <<EOF;
-# TEST STEP:$step->{"TAG"}
-EOF
-                if ($smt_changed == 1) {
-                    print $script_fh <<EOF;
-echo "SET SMT to $set_smt on all slaves"
-SMT_NEED_RESET=1
-grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=$set_smt"
-EOF
-                }
-            }
-        }
-
-        # For standalone mode, need to update spark-env.sh with ENV, then restart master/slaves
-        if (($spark_conf->{"SCHEDULER"} eq "STANDALONE") and (($last_worker_instances != $def_worker_instances) or ($last_worker_cores != $def_worker_cores)) and ($skip_standalone_worker_restart == 0)) {
-            print $script_fh <<EOF;
-$spark_conf->{"SPARK_HOME"}/sbin/stop-all.sh
-\\cp \$RUNDIR/.spark-env.sh.backup.master $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
-echo "export SPARK_WORKER_INSTANCES=$def_worker_instances" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
-echo "export SPARK_WORKER_CORES=$def_worker_cores" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
-EOF
-            if (exists $step->{"CMD"}->{"EXECUTOR_MEM"}) {
-                print $script_fh <<EOF;
-echo "export SPARK_WORKER_MEMORY=$step->{"CMD"}->{"EXECUTOR_MEM"}" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
-EOF
-            }
-            print $script_fh <<EOF;
-echo "export SPARK_MASTER_IP=$master_ip" >> $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
-for SLAVE in \$SLAVES
-do
-    \\cp \$RUNDIR/.spark-env.sh.backup.\$SLAVE /tmp/spark-env.sh.backup.\$SLAVE
-    echo "export SPARK_WORKER_INSTANCES=$def_worker_instances" >> /tmp/spark-env.sh.backup.\$SLAVE
-    echo "export SPARK_WORKER_CORES=$def_worker_cores" >> /tmp/spark-env.sh.backup.\$SLAVE
-EOF
-            if (exists $step->{"CMD"}->{"EXECUTOR_MEM"}) {
-                print $script_fh <<EOF;
-    echo "export SPARK_WORKER_MEMORY=$step->{"CMD"}->{"EXECUTOR_MEM"}" >> /tmp/spark-env.sh.backup.\$SLAVE
-EOF
-            }
-            print $script_fh <<EOF;
-    echo "export SPARK_MASTER_IP=$master_ip" >> /tmp/spark-env.sh.backup.\$SLAVE
-    scp /tmp/spark-env.sh.backup.\$SLAVE \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
-done
-$spark_conf->{"SPARK_HOME"}/sbin/start-all.sh
-EOF
         }
 
         my $cmd = "";
@@ -529,27 +391,17 @@ CMD_TO_KILL="$step->{"CMD"}->{"COMMAND"}"
 EOF
         $cmd = $cmd.$step->{"CMD"}->{"COMMAND"};
         my $def_conf = 0;
-        if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
-            $cmd = $cmd." --master spark://$master_ip:7077";
-            if (exists $step->{"CMD"}->{"EXECUTOR_MEM"}) {
-                $cmd = $cmd." --conf spark.executor.memory=".$step->{"CMD"}->{"EXECUTOR_MEM"};
-            }
-            if (exists $step->{"CMD"}->{"DRIVER_MEM"}) {
-                $cmd = $cmd." --conf spark.driver.memory=".$step->{"CMD"}->{"DRIVER_MEM"};
-            }
-        } else {
-            $cmd = $cmd." --master yarn";
-            if (exists $step->{"CMD"}->{"EXECUTOR_PER_DN"}) {
-                my $total_executors = $slave_count * $def_worker_instances;
-                $cmd = $cmd." --num-executors $total_executors";
-            }
-            $cmd = $cmd." --executor-cores ".$step->{"CMD"}->{"EXECUTOR_VCORES"};
-            if (exists $step->{"CMD"}->{"EXECUTOR_MEM"}) {
-                $cmd = $cmd." --executor-memory ".$step->{"CMD"}->{"EXECUTOR_MEM"};
-            }
-            if (exists $step->{"CMD"}->{"DRIVER_MEM"}) {
-                $cmd = $cmd." --driver-memory ".$step->{"CMD"}->{"DRIVER_MEM"};
-            }
+        $cmd = $cmd." --master yarn";
+        if (exists $step->{"CMD"}->{"EXECUTOR_PER_DN"}) {
+            my $total_executors = $slave_count * $def_worker_instances;
+            $cmd = $cmd." --num-executors $total_executors";
+        }
+        $cmd = $cmd." --executor-cores ".$step->{"CMD"}->{"EXECUTOR_VCORES"};
+        if (exists $step->{"CMD"}->{"EXECUTOR_MEM"}) {
+            $cmd = $cmd." --executor-memory ".$step->{"CMD"}->{"EXECUTOR_MEM"};
+        }
+        if (exists $step->{"CMD"}->{"DRIVER_MEM"}) {
+            $cmd = $cmd." --driver-memory ".$step->{"CMD"}->{"DRIVER_MEM"};
         }
         if (exists $step->{"CMD"}->{"PARAM"}) {
             foreach my $element (@{$step->{"CMD"}->{"PARAM"}}) {
@@ -642,38 +494,6 @@ EOF
     DURATION=`grep "Elapsed (wall clock) time" \$RUNDIR/data/raw/$tag-ITER\${ITER}_time_stdout.txt | awk -F"m:ss): " '{print \$2}' | awk -F: 'END { if (NF == 2) {sum=\$1*60+\$2} else {sum=\$1*3600+\$2*60+\$3} print sum}'`
     echo \"TAG:$tag ITER:\$ITER DURATION:\$DURATION\" >> \$INFO
 EOF
-        if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
-            print $script_fh <<EOF;
-    grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$tag-ITER\$ITER.log > /dev/null 2>&1
-    if [ \$? -eq 0 ]
-    then
-        TGT_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$tag-ITER\$ITER.log | awk -F"file:" '{print \$2}'`;
-        DST_EVENT_LOG_FN=`grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$tag-ITER\$ITER.log | awk -F"file:" '{print \$2}' | awk -F/ '{print \$NF}'`;
-        echo \"TAG:$tag ITER:\$ITER APPID:\$DST_EVENT_LOG_FN\" >> \$INFO
-        echo \"TAG:$tag ITER:\$ITER EVENTLOG:\$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$tag-ITER\$ITER\" >> \$INFO
-        for SLAVE in \$SLAVES
-        do
-            scp \$SLAVE:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$tag-ITER\$ITER > /dev/null 2>&1
-        done
-        scp $spark_conf->{"MASTER"}:\$TGT_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$tag-ITER\$ITER > /dev/null 2>&1
-    else
-        grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$tag-ITER\$ITER.log > /dev/null 2>&1
-        if [ \$? -eq 0 ]
-        then
-            DST_EVENT_LOG_FN=`grep "Submitted application" \$PMH/workload/spark/test_case/$script_dir/$tag-ITER\$ITER.log | awk '{print \$NF}'`;
-            for SLAVE in \$SLAVES
-            do
-                scp \$SLAVE:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$tag-ITER\$ITER > /dev/null 2>&1
-            done
-            scp $spark_conf->{"MASTER"}:$current_spark_event_dir/\$DST_EVENT_LOG_FN \$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$tag-ITER\$ITER > /dev/null 2>&1
-            echo \"TAG:$tag ITER:\$ITER APPID:\$DST_EVENT_LOG_FN\" >> \$INFO
-            echo \"TAG:$tag ITER:\$ITER EVENTLOG:\$RUNDIR/spark_events/\${DST_EVENT_LOG_FN}-$tag-ITER\$ITER\" >> \$INFO
-        else
-            echo "Cannot find app-ID, please enable console INFO log level when using STANDALONE scheduler!"
-        fi
-    fi
-EOF
-        } else {
             print $script_fh <<EOF;
     APP_ID_FROM_LOG=""
     grep "EventLoggingListener: Logging events to" \$PMH/workload/spark/test_case/$script_dir/$tag-ITER\$ITER.log > /dev/null 2>&1
@@ -725,7 +545,6 @@ EOF
         echo "Application ID not found for TAG:$tag ITER:\$ITER"
     fi
 EOF
-        }
         if (exists $step->{"AFTER"}) {
             if ($step->{"AFTER"} =~ /\<HADOOP_HOME\>/) {
                 $step->{"AFTER"} =~ s/\<HADOOP_HOME\>/$spark_conf->{"HADOOP_HOME"}/;
@@ -772,12 +591,6 @@ $step->{"SHELL"}
 cd \$PMH
 
 EOF
-    } elsif (exists $step->{"CHANGE_SMT"}) {
-        if ($step->{"CHANGE_SMT"} eq "YES") {
-            $change_smt = 1;
-        } elsif ($step->{"CHANGE_SMT"} eq "NO") {
-            $change_smt = 0;
-        }
     } elsif (exists $step->{"BATCH"}) {
         print $script_fh <<EOF;
 ## Batch script ##
@@ -948,31 +761,10 @@ EOF
     $tag = "";
 }
 
-# Restore SMT4 if SMT setting has been changed
-if (($is_power == 1) and ($smt_reset == 1)) {
-    print $script_fh <<EOF;
-# ACTION reset to SMT4 on all slave nodes
-grep -v \\# $spark_conf->{"HADOOP_HOME"}/etc/hadoop/slaves | xargs -i ssh {} "ppc64_cpu --smt=4"
-EOF
-}
-
 print $script_fh <<EOF;
 \$PMH/workload/spark/scripts/create_summary_table.pl \$PMH/workload/spark/test_case/$test_plan_fn \$RUNDIR
 
 EOF
-
-# Restore spark-env.sh if we are running in STANDALONE mode
-if ($spark_conf->{"SCHEDULER"} eq "STANDALONE") {
-    print $script_fh <<EOF;
-$spark_conf->{"SPARK_HOME"}/sbin/stop-all.sh
-\\cp \$RUNDIR/.spark-env.sh.backup.master $spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
-for SLAVE in \$SLAVES
-do
-    scp \$RUNDIR/.spark-env.sh.backup.\$SLAVE \$SLAVE:$spark_conf->{"SPARK_HOME"}/conf/spark-env.sh
-done
-
-EOF
-}
 
 close $script_fh;
 `chmod +x $script_dir/run.sh`;
