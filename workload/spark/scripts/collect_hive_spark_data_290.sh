@@ -248,8 +248,18 @@ do
         done
         if [ $GOT_DATA -eq 0 ]
         then
-            echo "NA 0" >> ${FOLDER}/result.log
-            echo "" >> ${FOLDER}/result.log
+            for host in `cat ${FOLDER}/SPARK_APP_NAME_${I}/application_* | grep "\"Host\"" | grep -v "Block Manager ID" | awk -F"\"Host\":" '{print $2}' | awk -F, '{print $1}' | sort -n | uniq | tr -d '"'`
+            do
+                GOT_DATA=1
+                COUNT_SPARK=`grep "SparkListenerTaskEnd" ${FOLDER}/SPARK_APP_NAME_${I}/application_* | grep $host | grep Success | wc -l`
+                echo "$host $COUNT_SPARK" >> ${FOLDER}/result.log
+                echo "" >> ${FOLDER}/result.log
+            done
+            if [ $GOT_DATA -eq 0 ]
+            then
+                echo "NA 0" >> ${FOLDER}/result.log
+                echo "" >> ${FOLDER}/result.log
+            fi
         fi
     
         echo "spark APP_NAME_GROUP_${I} bytes read:" >> ${FOLDER}/result.log
@@ -262,8 +272,17 @@ do
         done
         if [ $GOT_DATA -eq 0 ]
         then
-            echo "NA 0" >> ${FOLDER}/result.log
-            echo "" >> ${FOLDER}/result.log
+            for host in `cat ${FOLDER}/SPARK_APP_NAME_${I}/application_* | grep "\"Host\"" | grep -v "Block Manager ID" | awk -F"\"Host\":" '{print $2}' | awk -F, '{print $1}' | sort -n | uniq | tr -d '"'`
+            do
+                GOT_DATA=1
+                grep "SparkListenerTaskEnd" ${FOLDER}/SPARK_APP_NAME_${I}/application_* | grep $host | grep Success | grep "Bytes Read" | awk -F"Bytes Read" '{print $2}' | awk -F, '{print $1}' | awk -v var="$host" -F: 'BEGIN {sum=0;} {sum+=$2} END {print var " "sum}' >> ${FOLDER}/result.log
+                echo "" >> ${FOLDER}/result.log
+            done
+            if [ $GOT_DATA -eq 0 ]
+            then
+                echo "NA 0" >> ${FOLDER}/result.log
+                echo "" >> ${FOLDER}/result.log
+            fi
         fi
     
         echo "spark APP_NAME_GROUP_${I} records read:" >> ${FOLDER}/result.log
@@ -276,8 +295,17 @@ do
         done
         if [ $GOT_DATA -eq 0 ]
         then
-            echo "NA 0" >> ${FOLDER}/result.log
-            echo "" >> ${FOLDER}/result.log
+            for host in `cat ${FOLDER}/SPARK_APP_NAME_${I}/application_* | grep "\"Host\"" | grep -v "Block Manager ID" | awk -F"\"Host\":" '{print $2}' | awk -F, '{print $1}' | sort -n | uniq | tr -d '"'`
+            do
+                GOT_DATA=1
+                grep "SparkListenerTaskEnd" ${FOLDER}/SPARK_APP_NAME_${I}/application_* | grep $host | grep Success | grep "Records Read" | awk -F"Records Read" '{print $2}' | awk -F\} '{print $1}' | awk -v var="$host" -F: 'BEGIN {sum=0;} {sum+=$2} END {print var " "sum}' >> ${FOLDER}/result.log
+                echo "" >> ${FOLDER}/result.log
+            done
+            if [ $GOT_DATA -eq 0 ]
+            then
+                echo "NA 0" >> ${FOLDER}/result.log
+                echo "" >> ${FOLDER}/result.log
+            fi
         fi
     
         echo "spark APP_NAME_GROUP_${I} task avg launch-finish time(ms):" >> ${FOLDER}/result.log
@@ -294,8 +322,21 @@ do
         done
         if [ $GOT_DATA -eq 0 ]
         then
-            echo "NA NA" >> ${FOLDER}/result.log
-            echo "" >> ${FOLDER}/result.log
+            for host in `cat ${FOLDER}/SPARK_APP_NAME_${I}/application_* | grep "\"Host\"" | grep -v "Block Manager ID" | awk -F"\"Host\":" '{print $2}' | awk -F, '{print $1}' | sort -n | uniq | tr -d '"'`
+            do
+                GOT_DATA=1
+                grep "SparkListenerTaskEnd" ${FOLDER}/SPARK_APP_NAME_${I}/application_* | grep $host | grep Success | grep "Launch Time" | grep "Finish Time" | awk -F"Launch Time" '{print $2}' | awk -F, '{print $1}' | awk -F: '{print $2}' > file1
+                grep "SparkListenerTaskEnd" ${FOLDER}/SPARK_APP_NAME_${I}/application_* | grep $host | grep Success | grep "Launch Time" | grep "Finish Time" | awk -F"Finish Time" '{print $2}' | awk -F, '{print $1}' | awk -F: '{print $2}' > file2
+                paste file1 file2 | column -s $' ' -t | awk -v var="$host" 'BEGIN{sum=0; count=0;} {delta=($2 - $1); sum+=delta; count+=1} END {if (count==0){ print var " 0"} else {print var " " sum/count}}' >> ${FOLDER}/result.log
+                echo "" >> ${FOLDER}/result.log
+                rm -f file1
+                rm -f file2
+            done
+            if [ $GOT_DATA -eq 0 ]
+            then
+                echo "NA NA" >> ${FOLDER}/result.log
+                echo "" >> ${FOLDER}/result.log
+            fi
         fi
     done
 
