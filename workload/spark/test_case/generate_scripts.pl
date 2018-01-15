@@ -223,10 +223,10 @@ my $tag = "";
 foreach my $step (@{$scenario}) {
     print $script_fh <<EOF;
 # Do cleanup before any step
-PIDS=`ps -ef | grep -v "ps -ef" | grep "^\$KILL_TGT\\\\s" | awk '{print \$2}' | xargs -i sh -c "echo {} && cat /proc/{}/environ 2>/dev/null | grep -s TAG_TO_KILL_ME 2>&1" | grep -B 1 "Binary" | grep -v Binary | grep -v "\\\\-" | tr '\\n' ','`
+PIDS=`ps -ef | grep -v "ps -ef" | grep -v "ResourceManager" | grep "^\$KILL_TGT\\\\s" | awk '{print \$2}' | xargs -i sh -c "echo {} && cat /proc/{}/environ 2>/dev/null | grep -s TAG_TO_KILL_ME 2>&1" | grep -B 1 "Binary" | grep -v Binary | grep -v "\\\\-" | tr '\\n' ','`
 echo \$PIDS | tr ',' '\\n' | grep -v "^\\\$" | xargs -i sh -c "kill -9 {} 2>/dev/null"
 sleep 2
-PIDS=`ps -ef | grep -v "ps -ef" | grep "^\$KILL_TGT\\\\s" | awk '{print \$2}' | xargs -i sh -c "echo {} && cat /proc/{}/environ 2>/dev/null | grep -s TAG_TO_KILL_ME 2>&1" | grep -B 1 "Binary" | grep -v Binary | grep -v "\\\\-" | tr '\\n' ','`
+PIDS=`ps -ef | grep -v "ps -ef" | grep -v "ResourceManager" | grep "^\$KILL_TGT\\\\s" | awk '{print \$2}' | xargs -i sh -c "echo {} && cat /proc/{}/environ 2>/dev/null | grep -s TAG_TO_KILL_ME 2>&1" | grep -B 1 "Binary" | grep -v Binary | grep -v "\\\\-" | tr '\\n' ','`
 echo \$PIDS | tr ',' '\\n' | grep -v "^\\\$" | xargs -i sh -c "kill -9 {} 2>/dev/null"
 
 EOF
